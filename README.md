@@ -160,7 +160,9 @@ Guide: [docs/05-helm/application-deployment.md](docs/05-helm/application-deploym
 
 PR merge → date tag `YYYY.MM.DD-<run>` → hadolint → buildx (amd64 + arm64) → Trivy gate → push to ECR → SBOM + cosign → PR to `rems-microconfig` (`apps/<svc>/values-dev.yaml`) → auto-merge → ArgoCD sync → Argo Rollouts canary with analysis. Promotion to staging/prod uses `promote.yml` (same digest, CODEOWNER approvals). Rollback uses `rollback.yml`.
 
-Guide: [docs/06-cicd/deployment-workflow.md](docs/06-cicd/deployment-workflow.md).
+Branching: trunk-based. Short-lived `feat/*` / `fix/*` / `hotfix/*` branches merge to a protected `main` by squash PR. Environments are folders in `rems-microconfig`, not branches.
+
+Guides: [docs/06-cicd/deployment-workflow.md](docs/06-cicd/deployment-workflow.md), [docs/06-cicd/git-branching-strategy.md](docs/06-cicd/git-branching-strategy.md).
 
 ## 13. Monitoring access
 
@@ -209,7 +211,7 @@ Details: [docs/12-testing](docs/12-testing/terraform-validation.md).
 | 03 Terraform | [Installation](docs/03-terraform/installation.md) · [Structure](docs/03-terraform/project-structure.md) · [Backend](docs/03-terraform/backend-configuration.md) · [Modules](docs/03-terraform/modules-explanation.md) · [Environments](docs/03-terraform/environment-configuration.md) · [Deployment](docs/03-terraform/terraform-deployment.md) · [Troubleshooting](docs/03-terraform/troubleshooting.md) |
 | 04 Kubernetes | [Cluster](docs/04-kubernetes/cluster-configuration.md) · [Namespaces](docs/04-kubernetes/namespaces.md) · [Deployments](docs/04-kubernetes/deployments.md) · [Services](docs/04-kubernetes/services.md) · [Ingress](docs/04-kubernetes/ingress.md) · [Autoscaling](docs/04-kubernetes/autoscaling.md) · [Network policies](docs/04-kubernetes/network-policies.md) · [Troubleshooting](docs/04-kubernetes/troubleshooting.md) |
 | 05 Helm | [Installation](docs/05-helm/helm-installation.md) · [Chart structure](docs/05-helm/chart-structure.md) · [Values](docs/05-helm/values-configuration.md) · [Application deployment](docs/05-helm/application-deployment.md) |
-| 06 CI/CD | [GitHub Actions](docs/06-cicd/github-actions.md) · [Docker build](docs/06-cicd/docker-build.md) · [ECR](docs/06-cicd/ecr-integration.md) · [Security scanning](docs/06-cicd/security-scanning.md) · [ArgoCD](docs/06-cicd/argocd-setup.md) · [Workflow](docs/06-cicd/deployment-workflow.md) · [Rollback](docs/06-cicd/rollback-procedure.md) |
+| 06 CI/CD | [Branching strategy](docs/06-cicd/git-branching-strategy.md) · [GitHub Actions](docs/06-cicd/github-actions.md) · [Docker build](docs/06-cicd/docker-build.md) · [ECR](docs/06-cicd/ecr-integration.md) · [Security scanning](docs/06-cicd/security-scanning.md) · [ArgoCD](docs/06-cicd/argocd-setup.md) · [Workflow](docs/06-cicd/deployment-workflow.md) · [Rollback](docs/06-cicd/rollback-procedure.md) |
 | 07 Security | [IAM](docs/07-security/iam-security.md) · [Secrets](docs/07-security/secrets-management.md) · [Encryption](docs/07-security/encryption.md) · [Containers](docs/07-security/container-security.md) · [Kubernetes](docs/07-security/kubernetes-security.md) · [Tenant isolation](docs/07-security/tenant-isolation.md) · [MCP](docs/07-security/mcp-security.md) |
 | 08 Database | [PostgreSQL](docs/08-database/postgresql-setup.md) · [Redis](docs/08-database/redis-setup.md) · [Backup & restore](docs/08-database/backup-and-restore.md) · [Pooling](docs/08-database/connection-pooling.md) · [DR](docs/08-database/disaster-recovery.md) |
 | 09 Monitoring | [Prometheus](docs/09-monitoring/prometheus.md) · [Grafana](docs/09-monitoring/grafana.md) · [Loki](docs/09-monitoring/loki.md) · [Tempo](docs/09-monitoring/tempo.md) · [OpenTelemetry](docs/09-monitoring/opentelemetry.md) · [Alerting](docs/09-monitoring/alerting.md) · [Dashboards](docs/09-monitoring/dashboards.md) |

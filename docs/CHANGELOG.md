@@ -2,6 +2,13 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are UTC.
 
+## [1.1.0] · 2026-11-23
+
+### Added
+
+- `docs/06-cicd/git-branching-strategy.md`: trunk-based branching, naming, PR and merge rules, required checks, branch protection commands, hotfix flow, versioning.
+- Links to it from `README.md`, `docs/README.md` and the deployment workflow page.
+
 ## [1.0.0] · 2026-11-23
 
 ### Added: infrastructure implementation

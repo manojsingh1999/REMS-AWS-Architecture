@@ -53,6 +53,7 @@ Snapshot date: **2026-11-23**.
 | 13 | `dr-scale-up` PR prepared in rems-microconfig | microconfig repo | Runbook step 4 |
 | 14 | LiteLLM image tag pinned, Bedrock model IDs re-checked for the regions | `ai-infrastructure/llm-gateway/values.yaml` | Gateway can't start with a placeholder tag |
 | 15 | Silo tenancy option, service mesh / mTLS, CIS benchmark run, Infracost, RAG recall dataset | design only | Optional hardening |
+| 16 | Branch protection on the platform and service repos, and CODEOWNERS handles (`your-github-org` placeholders) | GitHub settings, `.github/CODEOWNERS` | `main` is unprotected until applied ([branching strategy](06-cicd/git-branching-strategy.md)) |
 
 ## ⛔ Blocked
 

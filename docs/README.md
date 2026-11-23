@@ -71,6 +71,7 @@ Objective → prerequisites → AWS services → steps with exact commands → T
 - [Application deployment](05-helm/application-deployment.md)
 
 ### 06 · CI/CD
+- [Git branching strategy](06-cicd/git-branching-strategy.md)
 - [GitHub Actions](06-cicd/github-actions.md)
 - [Docker build](06-cicd/docker-build.md)
 - [ECR integration](06-cicd/ecr-integration.md)

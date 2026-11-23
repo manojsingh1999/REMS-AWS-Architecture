@@ -25,6 +25,8 @@ sequenceDiagram
   RO->>RO: canary 10/25/50/100 with analysis
 ```
 
+Branching model behind this flow: [Git branching strategy](git-branching-strategy.md).
+
 ## Promotion rules
 
 | Env | Who changes the tag | Approval | Delivery |
