@@ -1,0 +1,19 @@
+operator:
+  replicaCount: 2
+metricsServer:
+  replicaCount: 2
+podDisruptionBudget:
+  operator:
+    maxUnavailable: 1
+  metricServer:
+    maxUnavailable: 1
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+prometheus:
+  operator:
+    enabled: true
+    serviceMonitor:
+      enabled: true

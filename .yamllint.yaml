@@ -1,0 +1,10 @@
+extends: relaxed
+ignore: |
+  helm/charts/*/templates/
+  .terraform/
+rules:
+  line-length:
+    max: 300
+  indentation: disable
+  truthy:
+    check-keys: false

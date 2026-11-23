@@ -1,0 +1,9 @@
+# Managed by Terraform (terraform/cicd/github). Dev files have no owner on purpose:
+# the CI bot's dev tag bumps auto-merge once "validate" is green.
+/apps/*/values-staging.yaml   @${org}/${platform_team}
+/apps/*/values-prod.yaml      @${org}/${platform_team} @${org}/${sre_team}
+/apps/*/values-prod-dr.yaml   @${org}/${platform_team} @${org}/${sre_team}
+/env/staging/                 @${org}/${platform_team}
+/env/prod/                    @${org}/${platform_team} @${org}/${sre_team}
+/env/prod-dr/                 @${org}/${platform_team} @${org}/${sre_team}
+/.github/                     @${org}/${platform_team}

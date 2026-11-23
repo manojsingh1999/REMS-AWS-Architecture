@@ -1,0 +1,101 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Environment: dev  (cluster: rems-dev, region: ap-south-1)
+resources:
+  - ../../base
+components:
+  - ../../../ai-infrastructure/llm-gateway/k8s
+patches:
+  - target:
+      kind: EC2NodeClass
+      name: default
+    patch: |-
+      - op: replace
+        path: /spec/role
+        value: rems-dev-karpenter-node
+      - op: replace
+        path: /spec/subnetSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-dev
+      - op: replace
+        path: /spec/securityGroupSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-dev
+      - op: add
+        path: /spec/tags/Environment
+        value: dev
+  - target:
+      kind: NodePool
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/requirements/0/values
+        value: [ap-south-1a, ap-south-1b, ap-south-1c]
+  - target:
+      kind: ClusterSecretStore
+      name: aws-secrets-manager
+    patch: |-
+      - op: replace
+        path: /spec/provider/aws/region
+        value: ap-south-1
+  - target:
+      kind: Deployment
+      name: overprovisioning
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
+  - target:
+      kind: NodePool
+      name: general
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/requirements/2/values
+        value: [spot]
+      - op: replace
+        path: /spec/limits/cpu
+        value: "48"
+  - target:
+      kind: ResourceQuota
+    patch: |-
+      - op: replace
+        path: /spec/hard/requests.cpu
+        value: "24"
+  # LLM gateway secrets: Secrets Manager keys of this environment
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-provider-keys
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/dev/llm/openai
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/dev/llm/anthropic
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-master-key
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/dev/llm/master-key
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-db
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/dev/aurora/rems-dev-core/llm-gateway
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/dev/aurora/rems-dev-core/llm-gateway
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-redis
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/dev/redis/rems-dev-cache
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/dev/redis/rems-dev-cache
+      - op: replace
+        path: /spec/data/2/remoteRef/key
+        value: rems/dev/redis/rems-dev-cache

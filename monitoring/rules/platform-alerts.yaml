@@ -1,0 +1,83 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rems-platform-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: rems-platform
+    rules:
+    - alert: RemsAvailabilityZoneDegraded
+      expr: |-
+        count by (label_topology_kubernetes_io_zone) (
+          (kube_node_status_condition{condition="Ready",status="true"} == 0)
+          * on (node) group_left (label_topology_kubernetes_io_zone) kube_node_labels
+        )
+        /
+        count by (label_topology_kubernetes_io_zone) (kube_node_labels) > 0.5
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: More than half of the nodes in {{ $labels.label_topology_kubernetes_io_zone }} are NotReady - probable AZ failure
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/az-failure.md
+    - alert: RemsPodCrashLooping
+      expr: increase(kube_pod_container_status_restarts_total{namespace=~"rems|rems-ai"}[15m]) > 3
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.namespace }}/{{ $labels.pod }} restarting repeatedly'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/bad-deployment-rollback.md
+    - alert: RemsAutoscalerAtMax
+      expr: |-
+        kube_horizontalpodautoscaler_status_current_replicas{namespace=~"rems|rems-ai"}
+        >= kube_horizontalpodautoscaler_spec_max_replicas{namespace=~"rems|rems-ai"}
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.horizontalpodautoscaler }} is pinned at maxReplicas - capacity ceiling reached'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/traffic-spike.md
+    - alert: RemsRolloutAborted
+      expr: rollout_info{phase="Degraded",namespace=~"rems|rems-ai"} == 1
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: Canary of {{ $labels.name }} aborted by analysis - automatic rollback performed
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/bad-deployment-rollback.md
+    - alert: RemsPendingPodsTooLong
+      expr: sum by (namespace) (kube_pod_status_phase{phase="Pending",namespace=~"rems|rems-ai"}) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: Pods pending > 5m in {{ $labels.namespace }} - Karpenter limits, quota or AZ capacity
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/traffic-spike.md
+    - alert: RemsKarpenterNodePoolNearLimit
+      expr: karpenter_nodepools_usage{resource_type="cpu"} / karpenter_nodepools_limit{resource_type="cpu"} > 0.85
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: NodePool {{ $labels.nodepool }} above 85% of its CPU limit
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/traffic-spike.md
+    - alert: RemsPVCAlmostFull
+      expr: kubelet_volume_stats_available_bytes{namespace=~"observability|monitoring"} / kubelet_volume_stats_capacity_bytes < 0.15
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.persistentvolumeclaim }} has < 15% free'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/telemetry-cost-spike.md
+    - alert: RemsExternalSecretSyncFailing
+      expr: sum by (name, namespace) (externalsecret_status_condition{condition="Ready",status="False"}) > 0
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: ExternalSecret {{ $labels.namespace }}/{{ $labels.name }} not syncing from Secrets Manager
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/redis-failure.md

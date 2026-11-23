@@ -1,0 +1,27 @@
+installCRDs: true
+replicaCount: 2
+serviceAccount:
+  name: external-secrets # Pod Identity: read rems/<env>/* only
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+webhook:
+  replicaCount: 2
+  nodeSelector:
+    rems.io/node-pool: system
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+certController:
+  nodeSelector:
+    rems.io/node-pool: system
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+serviceMonitor:
+  enabled: true

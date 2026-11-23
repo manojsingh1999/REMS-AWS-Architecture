@@ -1,0 +1,17 @@
+# rems-frontend - dev overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+rollout:
+  enabled: false
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+ingress:
+  host: app.dev.rems.example.com

@@ -1,0 +1,144 @@
+# Grafana dashboards as code (sidecar label grafana_dashboard=1). Generated; edit via PR.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-rems-slo-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+  annotations:
+    grafana_folder: REMS
+data:
+  rems-slo-overview.json: "{\n \"uid\": \"rems-slo-overview\",\n \"title\": \"REMS / SLO overview (99.95%)\",\n \"tags\": [\n  \"rems\",\n  \"slo\"\n ],\n \"timezone\": \"browser\",\n \"schemaVersion\"\
+    : 39,\n \"refresh\": \"30s\",\n \"time\": {\n  \"from\": \"now-6h\",\n  \"to\": \"now\"\n },\n \"templating\": {\n  \"list\": []\n },\n \"panels\": [\n  {\n   \"id\": 1,\n   \"type\": \"stat\",\n  \
+    \ \"title\": \"rems-frontend availability (30d)\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\"\
+    : \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\"rems-frontend\\\",http_response_status_code=~\\\
+    \"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\"rems-frontend\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\"\
+    : {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"red\",\n        \"value\": null\n       },\n       {\n\
+    \        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"color\": \"green\",\n        \"value\": 0.9995\n       }\n      ]\n     }\n    },\n    \"overrides\": []\n \
+    \  },\n   \"options\": {}\n  },\n  {\n   \"id\": 2,\n   \"type\": \"stat\",\n   \"title\": \"rems-api availability (30d)\",\n   \"gridPos\": {\n    \"x\": 6,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\"\
+    : 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\
+    \"rems-api\\\",http_response_status_code=~\\\"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\"rems-api\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n\
+    \   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"red\",\n\
+    \        \"value\": null\n       },\n       {\n        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"color\": \"green\",\n        \"value\": 0.9995\n       }\n   \
+    \   ]\n     }\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 3,\n   \"type\": \"stat\",\n   \"title\": \"authorization-service availability (30d)\",\n   \"gridPos\"\
+    : {\n    \"x\": 12,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\"\
+    : \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\"authorization-service\\\",http_response_status_code=~\\\"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\
+    \"authorization-service\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\"\
+    : \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"red\",\n        \"value\": null\n       },\n       {\n        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n      \
+    \ {\n        \"color\": \"green\",\n        \"value\": 0.9995\n       }\n      ]\n     }\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 4,\n   \"type\": \"stat\",\n\
+    \   \"title\": \"data-governance availability (30d)\",\n   \"gridPos\": {\n    \"x\": 18,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n  \
+    \  \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\"data-governance\\\"\
+    ,http_response_status_code=~\\\"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\"data-governance\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n\
+    \   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"red\",\n     \
+    \   \"value\": null\n       },\n       {\n        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"color\": \"green\",\n        \"value\": 0.9995\n       }\n      ]\n\
+    \     }\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 5,\n   \"type\": \"stat\",\n   \"title\": \"metadata-rca availability (30d)\",\n   \"gridPos\": {\n    \"x\"\
+    : 0,\n    \"y\": 4,\n    \"w\": 6,\n    \"h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n \
+    \    \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\"metadata-rca\\\",http_response_status_code=~\\\"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\
+    \"metadata-rca\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\"\
+    ,\n      \"steps\": [\n       {\n        \"color\": \"red\",\n        \"value\": null\n       },\n       {\n        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"\
+    color\": \"green\",\n        \"value\": 0.9995\n       }\n      ]\n     }\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 6,\n   \"type\": \"stat\",\n   \"title\": \"\
+    chat-engine availability (30d)\",\n   \"gridPos\": {\n    \"x\": 6,\n    \"y\": 4,\n    \"w\": 6,\n    \"h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\
+    \n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\"chat-engine\\\",http_response_status_code=~\\\
+    \"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\"chat-engine\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\"\
+    : {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"red\",\n        \"value\": null\n       },\n       {\n\
+    \        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"color\": \"green\",\n        \"value\": 0.9995\n       }\n      ]\n     }\n    },\n    \"overrides\": []\n \
+    \  },\n   \"options\": {}\n  },\n  {\n   \"id\": 7,\n   \"type\": \"stat\",\n   \"title\": \"mcp-server availability (30d)\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 4,\n    \"w\": 6,\n    \"\
+    h\": 4\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\\\
+    \"mcp-server\\\",http_response_status_code=~\\\"5..\\\"}[30d])) / sum(increase(http_server_request_duration_seconds_count{service_name=\\\"mcp-server\\\"}[30d])))\",\n     \"legendFormat\": \"\"\n \
+    \   }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\",\n     \"thresholds\": {\n      \"mode\": \"absolute\",\n      \"steps\": [\n       {\n        \"color\": \"\
+    red\",\n        \"value\": null\n       },\n       {\n        \"color\": \"orange\",\n        \"value\": 0.999\n       },\n       {\n        \"color\": \"green\",\n        \"value\": 0.9995\n      \
+    \ }\n      ]\n     }\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 8,\n   \"type\": \"timeseries\",\n   \"title\": \"Error-budget burn rate (1h) by service\",\n  \
+    \ \"gridPos\": {\n    \"x\": 0,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n\
+    \     \"refId\": \"A\",\n     \"expr\": \"rems:slo_errors_ratio:rate1h / 0.0005\",\n     \"legendFormat\": \"{{service_name}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\"\
+    : \"short\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 9,\n   \"type\": \"timeseries\",\n   \"title\": \"Latency SLO violations ratio (1h)\",\n   \"gridPos\": {\n\
+    \    \"x\": 12,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\"\
+    : \"A\",\n     \"expr\": \"rems:slo_latency_violations_ratio:rate1h\",\n     \"legendFormat\": \"{{service_name}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\"\
+    \n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 10,\n   \"type\": \"table\",\n   \"title\": \"Firing SLO alerts\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 16,\n\
+    \    \"w\": 24,\n    \"h\": 6\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"ALERTS{alertname=~\\\
+    \"RemsSLO.*\\\",alertstate=\\\"firing\\\"}\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n\
+    \   \"options\": {}\n  }\n ],\n \"editable\": false\n}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-rems-service-red
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+  annotations:
+    grafana_folder: REMS
+data:
+  rems-service-red.json: "{\n \"uid\": \"rems-service-red\",\n \"title\": \"REMS / Service RED + saturation\",\n \"tags\": [\n  \"rems\"\n ],\n \"timezone\": \"browser\",\n \"schemaVersion\": 39,\n \"refresh\"\
+    : \"30s\",\n \"time\": {\n  \"from\": \"now-6h\",\n  \"to\": \"now\"\n },\n \"templating\": {\n  \"list\": [\n   {\n    \"name\": \"service\",\n    \"type\": \"custom\",\n    \"query\": \"rems-frontend,rems-api,authorization-service,data-governance,metadata-rca,chat-engine,mcp-server\"\
+    ,\n    \"current\": {\n     \"text\": \"rems-api\",\n     \"value\": \"rems-api\"\n    },\n    \"options\": [\n     {\n      \"text\": \"rems-frontend\",\n      \"value\": \"rems-frontend\",\n     \
+    \ \"selected\": false\n     },\n     {\n      \"text\": \"rems-api\",\n      \"value\": \"rems-api\",\n      \"selected\": true\n     },\n     {\n      \"text\": \"authorization-service\",\n      \"\
+    value\": \"authorization-service\",\n      \"selected\": false\n     },\n     {\n      \"text\": \"data-governance\",\n      \"value\": \"data-governance\",\n      \"selected\": false\n     },\n   \
+    \  {\n      \"text\": \"metadata-rca\",\n      \"value\": \"metadata-rca\",\n      \"selected\": false\n     },\n     {\n      \"text\": \"chat-engine\",\n      \"value\": \"chat-engine\",\n      \"\
+    selected\": false\n     },\n     {\n      \"text\": \"mcp-server\",\n      \"value\": \"mcp-server\",\n      \"selected\": false\n     }\n    ]\n   }\n  ]\n },\n \"panels\": [\n  {\n   \"id\": 11,\n\
+    \   \"type\": \"timeseries\",\n   \"title\": \"Requests per second\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\"\
+    ,\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (http_route) (rate(http_server_request_duration_seconds_count{service_name=\\\"$service\\\
+    \"}[2m]))\",\n     \"legendFormat\": \"{{http_route}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n\
+    \  },\n  {\n   \"id\": 12,\n   \"type\": \"timeseries\",\n   \"title\": \"Error ratio (5xx)\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 0,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\"\
+    : {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(rate(http_server_request_duration_seconds_count{service_name=\\\
+    \"$service\\\",http_response_status_code=~\\\"5..\\\"}[2m])) / sum(rate(http_server_request_duration_seconds_count{service_name=\\\"$service\\\"}[2m]))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n\
+    \   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percentunit\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 13,\n   \"type\": \"timeseries\",\n   \"\
+    title\": \"Latency p50 / p95 / p99\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\
+    \n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\\\"$service\\\"}[5m])))\"\
+    ,\n     \"legendFormat\": \"p50\"\n    },\n    {\n     \"refId\": \"B\",\n     \"expr\": \"histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\\\"$service\\\
+    \"}[5m])))\",\n     \"legendFormat\": \"p95\"\n    },\n    {\n     \"refId\": \"C\",\n     \"expr\": \"histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\\\
+    \"$service\\\"}[5m])))\",\n     \"legendFormat\": \"p99\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"s\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n\
+    \  },\n  {\n   \"id\": 14,\n   \"type\": \"timeseries\",\n   \"title\": \"Replicas (current / desired)\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"\
+    datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(kube_deployment_status_replicas_available{deployment=\\\
+    \"$service\\\"}) or sum(rollout_info_replicas_available{name=\\\"$service\\\"})\",\n     \"legendFormat\": \"available\"\n    },\n    {\n     \"refId\": \"B\",\n     \"expr\": \"max(kube_horizontalpodautoscaler_status_desired_replicas{horizontalpodautoscaler=~\\\
+    \"$service|keda-hpa-$service\\\"})\",\n     \"legendFormat\": \"desired\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n\
+    \   \"options\": {}\n  },\n  {\n   \"id\": 15,\n   \"type\": \"timeseries\",\n   \"title\": \"CPU usage vs request\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 16,\n    \"w\": 12,\n    \"h\": 8\n\
+    \   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(rate(container_cpu_usage_seconds_total{container=\\\
+    \"$service\\\"}[5m]))\",\n     \"legendFormat\": \"usage\"\n    },\n    {\n     \"refId\": \"B\",\n     \"expr\": \"sum(kube_pod_container_resource_requests{container=\\\"$service\\\",resource=\\\"\
+    cpu\\\"})\",\n     \"legendFormat\": \"requests\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"cores\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n\
+    \  {\n   \"id\": 16,\n   \"type\": \"timeseries\",\n   \"title\": \"Memory working set vs limit\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 16,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\"\
+    : {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(container_memory_working_set_bytes{container=\\\"$service\\\
+    \"})\",\n     \"legendFormat\": \"working set\"\n    },\n    {\n     \"refId\": \"B\",\n     \"expr\": \"sum(kube_pod_container_resource_limits{container=\\\"$service\\\",resource=\\\"memory\\\"})\"\
+    ,\n     \"legendFormat\": \"limit\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"bytes\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\"\
+    : 17,\n   \"type\": \"bargauge\",\n   \"title\": \"Pods by zone\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 24,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\"\
+    ,\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"count by (label_topology_kubernetes_io_zone) (kube_pod_info{created_by_name=~\\\"$service.*\\\
+    \"} * on (node) group_left (label_topology_kubernetes_io_zone) kube_node_labels)\",\n     \"legendFormat\": \"{{label_topology_kubernetes_io_zone}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\"\
+    : {\n     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 18,\n   \"type\": \"stat\",\n   \"title\": \"Restarts (1h)\",\n   \"gridPos\": {\n    \"\
+    x\": 12,\n    \"y\": 24,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\"\
+    ,\n     \"expr\": \"sum(increase(kube_pod_container_status_restarts_total{container=\\\"$service\\\"}[1h]))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n\
+    \     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  }\n ],\n \"editable\": false\n}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-rems-ai-gateway
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+  annotations:
+    grafana_folder: REMS
+data:
+  rems-ai-gateway.json: "{\n \"uid\": \"rems-ai-gateway\",\n \"title\": \"REMS / AI gateway (LLM, RAG, MCP)\",\n \"tags\": [\n  \"rems\",\n  \"ai\"\n ],\n \"timezone\": \"browser\",\n \"schemaVersion\"\
+    : 39,\n \"refresh\": \"30s\",\n \"time\": {\n  \"from\": \"now-6h\",\n  \"to\": \"now\"\n },\n \"templating\": {\n  \"list\": []\n },\n \"panels\": [\n  {\n   \"id\": 19,\n   \"type\": \"timeseries\"\
+    ,\n   \"title\": \"LLM requests by model\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"\
+    prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (model) (rate(litellm_deployment_total_requests_total[5m]))\",\n     \"legendFormat\": \"{{model}}\"\n\
+    \    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 20,\n   \"type\": \"timeseries\"\
+    ,\n   \"title\": \"LLM failures by provider\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 0,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\"\
+    : \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (api_provider) (rate(litellm_deployment_failure_responses_total[5m]))\",\n     \"legendFormat\": \"\
+    {{api_provider}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 21,\n   \"type\"\
+    : \"timeseries\",\n   \"title\": \"Fallbacks triggered\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n\
+    \    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(rate(litellm_deployment_successful_fallbacks_total[5m]))\",\n     \"legendFormat\": \"\"\n\
+    \    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 22,\n   \"type\": \"timeseries\"\
+    ,\n   \"title\": \"Tokens per minute by tenant\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 8,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"\
+    uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (team_alias) (rate(litellm_total_tokens_total[1m])) * 60\",\n     \"legendFormat\": \"{{team_alias}}\"\
+    \n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 23,\n   \"type\": \"bargauge\",\n\
+    \   \"title\": \"Spend (USD) by tenant, 24h\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 16,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\"\
+    : \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (team_alias) (increase(litellm_spend_metric_total[24h]))\",\n     \"legendFormat\": \"{{team_alias}}\"\
+    \n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"currencyUSD\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n  {\n   \"id\": 24,\n   \"type\": \"timeseries\"\
+    ,\n   \"title\": \"Chat / RCA in-flight requests\",\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 16,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\": {\n    \"type\": \"prometheus\",\n   \
+    \ \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (service_name) (http_server_active_requests{service_name=~\\\"chat-engine|metadata-rca\\\"\
+    })\",\n     \"legendFormat\": \"{{service_name}}\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"short\"\n    },\n    \"overrides\": []\n   },\n   \"options\": {}\n  },\n\
+    \  {\n   \"id\": 25,\n   \"type\": \"timeseries\",\n   \"title\": \"MCP tool calls denied (403)\",\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 24,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"datasource\"\
+    : {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(rate(http_server_request_duration_seconds_count{service_name=\\\
+    \"mcp-server\\\",http_response_status_code=\\\"403\\\"}[5m]))\",\n     \"legendFormat\": \"\"\n    }\n   ],\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\"\
+    : []\n   },\n   \"options\": {}\n  }\n ],\n \"editable\": false\n}"

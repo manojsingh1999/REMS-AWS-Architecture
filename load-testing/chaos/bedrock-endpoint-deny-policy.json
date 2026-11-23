@@ -1,0 +1,7 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "ChaosDenyBedrock", "Effect": "Deny", "Principal": "*", "Action": "bedrock:*", "Resource": "*" },
+    { "Sid": "AllowEverythingElse", "Effect": "Allow", "Principal": "*", "NotAction": "bedrock:*", "Resource": "*" }
+  ]
+}

@@ -1,0 +1,211 @@
+# Default values for mcp-server.
+# REMS MCP Server (secure, read-only tools for querying REMS observability data)
+# Environment overrides: values-<env>.yaml + ../../environments/<env>/global.yaml (passed by ArgoCD).
+# Values marked PLACEHOLDER come from the service repository - see documentation/02-assumptions.md.
+
+# ---------------------------------------------------------------- global (overridden by environments/<env>/global.yaml)
+global:
+  environment: dev
+  awsRegion: ap-south-1
+  vpcCidr: 10.10.0.0/16
+  dataSubnetCIDRs:
+  - 10.10.3.0/24
+  - 10.10.4.0/24
+  - 10.10.5.0/24
+  secretStore: aws-secrets-manager
+  ingress:
+    publicGroup: rems-public
+    internalGroup: rems-internal
+    certificateArn: PLACEHOLDER-acm-certificate-arn
+    wafAclArn: PLACEHOLDER-waf-acl-arn
+    accessLogsBucket: PLACEHOLDER-alb-logs-bucket
+    deletionProtection: false
+
+# ---------------------------------------------------------------- identity
+nameOverride: ''
+component: mcp
+image:
+  repository: 444444444444.dkr.ecr.ap-south-1.amazonaws.com/rems/mcp-server
+  tag: ''
+  digest: ''
+  pullPolicy: IfNotPresent
+# PLACEHOLDER(P1/P2): container port from the service Dockerfile EXPOSE / uvicorn --port
+containerPort: 8000
+command: []
+args: []
+
+# Non-secret, application-specific settings rendered into a ConfigMap (envFrom). Intentionally empty:
+# env var names are not invented - add them from the service's settings class.
+config: {}
+extraEnv: {}
+
+# ---------------------------------------------------------------- delivery
+replicaCount: 1
+rollout:
+  enabled: false
+  steps:
+  - setWeight: 10
+  - pause:
+      duration: 2m
+  - setWeight: 25
+  - pause:
+      duration: 3m
+  - setWeight: 50
+  - pause:
+      duration: 5m
+  - setWeight: 100
+  analysis:
+    enabled: true
+    templates:
+    - rems-http-error-rate
+    - rems-http-latency-p95
+
+# ---------------------------------------------------------------- pod
+serviceAccount:
+  create: true
+  name: ''
+  automountToken: true
+priorityClassName: rems-high
+nodePool: general
+topologySpread:
+  enabled: true
+  zoneWhenUnsatisfiable: ScheduleAnyway
+terminationGracePeriodSeconds: 45
+preStopSleepSeconds: 15
+tmpSizeLimit: 256Mi
+podLabels: {}
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop:
+    - ALL
+extraVolumes: []
+extraVolumeMounts: []
+
+# PLACEHOLDER(P3): health endpoints of the service
+probes:
+  startup:
+    path: /healthz
+    periodSeconds: 5
+    failureThreshold: 30
+  liveness:
+    path: /healthz
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# ---------------------------------------------------------------- resources (Guaranteed memory: request == limit)
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: '1'
+    memory: 512Mi
+
+# ---------------------------------------------------------------- autoscaling (HPA or KEDA; KEDA always includes a CPU trigger)
+autoscaling:
+  enabled: true
+  type: hpa
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: null
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      selectPolicy: Min
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+  keda:
+    triggers: []
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# ---------------------------------------------------------------- networking
+service:
+  port: 80
+ingress:
+  enabled: true
+  scheme: internal
+  groupName: ''
+  order: 10
+  host: app.dev.rems.example.com
+  paths:
+  - /mcp
+  idleTimeoutSeconds: 300
+  annotations: {}
+# PLACEHOLDER(P7): path prefixes are routing assumptions - align with the real API routes.
+
+# ---------------------------------------------------------------- network policy (default-deny namespace baseline + this allow-list)
+networkPolicy:
+  enabled: true
+  ingressFrom:
+  - namespace: rems-ai
+    app: chat-engine
+  egressTo:
+  - namespace: rems
+    app: authorization-service
+    ports:
+    - 8000
+  - namespace: rems
+    app: rems-api
+    ports:
+    - 8000
+  - namespace: observability
+    ports:
+    - 8481
+    - 3100
+    - 3200
+    - 80
+  egressCIDRs: []
+  allowKubeAPI: true
+
+# ---------------------------------------------------------------- secrets (AWS Secrets Manager via External Secrets)
+# Mounted as files at /var/run/secrets/rems/<name>/<key>. Set envFrom: true or `keys: {ENV_NAME: json_key}`
+# once the service's expected variable names are confirmed.
+externalSecrets: []
+
+# ---------------------------------------------------------------- observability
+otel:
+  enabled: true
+  endpoint: http://otel-collector.observability.svc:4318
+  protocol: http/protobuf
+  samplerRatio: '0.1'
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  interval: 30s
+# PLACEHOLDER(P4): metrics path
+
+# Background worker not used by this service.
+worker:
+  enabled: false

@@ -1,0 +1,23 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+.terraform.lock.hcl.bak
+# Secrets / local overrides (never commit)
+*.auto.tfvars
+secrets.*.tfvars
+.env
+# Helm
+helm/charts/*/charts/
+helm/charts/*/Chart.lock
+helm/charts/*/Chart.json
+# Tooling
+scripts/mermaid-check/node_modules/
+scripts/mermaid-check/package-lock.json
+load-testing/results/*
+!load-testing/results/.gitkeep
+rendered/
+__pycache__/

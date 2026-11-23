@@ -1,0 +1,44 @@
+# k6 load tests against staging (never prod). Runs on a self-hosted runner inside the staging VPC
+# when testing internal endpoints, or on GitHub-hosted runners for the public ALB.
+name: load-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "k6 scenario"
+        required: true
+        type: choice
+        options: [normal-load, peak-5x, spike-10x, db-bottleneck, ai-provider-failure, redis-failure, az-failure]
+      base_url:
+        description: "Target base URL"
+        required: true
+        type: string
+        default: "https://app.staging.rems.example.com"
+  schedule:
+    - cron: "0 22 * * 0" # weekly normal-load regression, Monday 03:30 IST
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    environment: load-test-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run scenario
+        env:
+          SCENARIO: ${{ inputs.scenario || 'normal-load' }}
+          BASE_URL: ${{ inputs.base_url || 'https://app.staging.rems.example.com' }}
+          K6_ACCESS_TOKEN: ${{ secrets.K6_TEST_USER_TOKEN }} # short-lived token of a synthetic test tenant
+        run: |
+          k6 run --summary-export "summary-${SCENARIO}.json" \
+            -e BASE_URL="${BASE_URL}" -e ACCESS_TOKEN="${K6_ACCESS_TOKEN}" \
+            "load-testing/k6/scenarios/${SCENARIO}.js"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-${{ inputs.scenario || 'normal-load' }}
+          path: summary-*.json

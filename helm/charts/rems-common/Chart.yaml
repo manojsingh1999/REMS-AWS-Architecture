@@ -1,0 +1,8 @@
+apiVersion: v2
+name: rems-common
+description: Library chart with the hardened workload templates shared by every REMS service
+type: library
+version: 1.0.0
+kubeVersion: ">=1.29.0-0"
+maintainers:
+  - name: REMS Platform Team

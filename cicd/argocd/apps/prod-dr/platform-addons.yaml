@@ -1,0 +1,122 @@
+# Cluster add-ons for prod-dr. Sync waves order CRD providers before their consumers.
+# Values: <valuesDir>/values.yaml then <valuesDir>/values-prod-dr.yaml (optional).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-addons-prod-dr
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - { name: karpenter, repoURL: public.ecr.aws/karpenter, chart: karpenter, version: "1.1.1", namespace: kube-system, valuesDir: kubernetes/platform-addons/karpenter, wave: "-30" }
+          - { name: aws-load-balancer-controller, repoURL: "https://aws.github.io/eks-charts", chart: aws-load-balancer-controller, version: "1.10.1", namespace: kube-system, valuesDir: kubernetes/platform-addons/aws-load-balancer-controller, wave: "-20" }
+          - { name: external-secrets, repoURL: "https://charts.external-secrets.io", chart: external-secrets, version: "0.12.1", namespace: external-secrets, valuesDir: kubernetes/platform-addons/external-secrets, wave: "-20" }
+          - { name: metrics-server, repoURL: "https://kubernetes-sigs.github.io/metrics-server/", chart: metrics-server, version: "3.12.2", namespace: kube-system, valuesDir: kubernetes/platform-addons/metrics-server, wave: "-20" }
+          - { name: keda, repoURL: "https://kedacore.github.io/charts", chart: keda, version: "2.16.0", namespace: keda, valuesDir: kubernetes/platform-addons/keda, wave: "-20" }
+          - { name: argo-rollouts, repoURL: "https://argoproj.github.io/argo-helm", chart: argo-rollouts, version: "2.38.0", namespace: argo-rollouts, valuesDir: kubernetes/platform-addons/argo-rollouts, wave: "-20" }
+          - { name: kyverno, repoURL: "https://kyverno.github.io/kyverno/", chart: kyverno, version: "3.3.4", namespace: kyverno, valuesDir: kubernetes/platform-addons/kyverno, wave: "-20" }
+          - { name: external-dns, repoURL: "https://kubernetes-sigs.github.io/external-dns/", chart: external-dns, version: "1.15.0", namespace: external-dns, valuesDir: kubernetes/platform-addons/external-dns, wave: "-10" }
+          - { name: kube-prometheus-stack, repoURL: "https://prometheus-community.github.io/helm-charts", chart: kube-prometheus-stack, version: "66.3.1", namespace: monitoring, valuesDir: monitoring/kube-prometheus-stack, wave: "-10" }
+          - { name: victoria-metrics-cluster, repoURL: "https://victoriametrics.github.io/helm-charts/", chart: victoria-metrics-cluster, version: "0.14.6", namespace: observability, valuesDir: monitoring/victoria-metrics, wave: "-5" }
+          - { name: loki, repoURL: "https://grafana.github.io/helm-charts", chart: loki, version: "6.23.0", namespace: observability, valuesDir: monitoring/loki, wave: "-5" }
+          - { name: tempo, repoURL: "https://grafana.github.io/helm-charts", chart: tempo-distributed, version: "1.26.0", namespace: observability, valuesDir: monitoring/tempo, wave: "-5" }
+          - { name: otel-collector, repoURL: "https://open-telemetry.github.io/opentelemetry-helm-charts", chart: opentelemetry-collector, version: "0.111.0", namespace: observability, valuesDir: monitoring/otel-collector, wave: "-5" }
+          - { name: llm-gateway, repoURL: ghcr.io/berriai, chart: litellm-helm, version: "0.1.572", namespace: rems-ai, valuesDir: ai-infrastructure/llm-gateway, wave: "0" }
+  template:
+    metadata:
+      name: "rems-prod-dr-{{.name}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{.wave}}"
+      labels:
+        rems.io/layer: platform
+    spec:
+      project: platform
+      sources:
+        - repoURL: "{{.repoURL}}"
+          chart: "{{.chart}}"
+          targetRevision: "{{.version}}"
+          helm:
+            releaseName: "{{.name}}"
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - "$values/{{.valuesDir}}/values.yaml"
+              - "$values/{{.valuesDir}}/values-prod-dr.yaml"
+        - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+          targetRevision: main
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.namespace}}"
+      syncPolicy:
+        automated:
+          prune: false # add-ons are never auto-pruned in prod
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - CreateNamespace=false
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+---
+# Namespaces, quotas, netpols, Karpenter pools, ClusterSecretStore (kustomize overlay).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rems-prod-dr-cluster-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-40"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+    targetRevision: main
+    path: kubernetes/overlays/prod-dr
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true # Karpenter / ESO CRDs arrive in a later wave
+---
+# Kyverno policies, Argo Rollouts analysis templates, Prometheus SLO rules, Grafana dashboards.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rems-prod-dr-policies-and-rules
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+      targetRevision: main
+      path: security/kyverno
+    - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+      targetRevision: main
+      path: cicd/argo-rollouts
+    - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+      targetRevision: main
+      path: monitoring/rules
+    - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+      targetRevision: main
+      path: monitoring/grafana/dashboards
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

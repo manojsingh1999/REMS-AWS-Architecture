@@ -1,0 +1,14 @@
+provider:
+  name: aws
+serviceAccount:
+  name: external-dns
+policy: upsert-only # never deletes records it did not create
+txtOwnerId: PLACEHOLDER-cluster-name
+domainFilters:
+  - PLACEHOLDER-domain
+sources: [ingress]
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists

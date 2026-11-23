@@ -1,0 +1,51 @@
+# MCP tool allow-list (contract between the MCP server, OPA policy and security review).
+# PLACEHOLDER: tool names/arguments are the proposed contract - align with the MCP server implementation.
+# Every tool is read-only; limits mirror security/opa/mcp_tools.rego and are enforced server-side.
+version: 1
+tools:
+  - name: query_metrics
+    description: Run a PromQL/MetricsQL query for the caller's tenant
+    backend: vmselect /select/<tenant_account_id>/prometheus/api/v1/query_range
+    read_only: true
+    roles: [sre, incident-viewer, tenant-admin]
+    limits: { max_range_minutes: 1440, max_limit: 10000, timeout_seconds: 30 }
+  - name: query_logs
+    description: Run a LogQL query (tenant header X-Scope-OrgID from the token)
+    backend: loki-gateway /loki/api/v1/query_range
+    read_only: true
+    roles: [sre, tenant-admin]
+    limits: { max_range_minutes: 360, max_limit: 2000, timeout_seconds: 30 }
+  - name: query_traces
+    description: TraceQL search / fetch trace by id
+    backend: tempo-query-frontend /api/search
+    read_only: true
+    roles: [sre, tenant-admin]
+    limits: { max_range_minutes: 360, max_limit: 500, timeout_seconds: 30 }
+  - name: get_incident
+    description: Incident with timeline and linked alerts
+    backend: rems-api (read endpoint, PLACEHOLDER route)
+    read_only: true
+    roles: [sre, incident-viewer, tenant-admin]
+    limits: { max_limit: 1 }
+  - name: list_alerts
+    description: Active/recent alerts for the tenant
+    backend: rems-api (read endpoint, PLACEHOLDER route)
+    read_only: true
+    roles: [sre, incident-viewer, tenant-admin]
+    limits: { max_range_minutes: 1440, max_limit: 500 }
+  - name: describe_workload
+    description: Read-only view of a tenant-mapped Kubernetes workload (no secrets, no env values)
+    backend: kube-apiserver via rems-k8s-observer ClusterRole
+    read_only: true
+    roles: [sre, tenant-admin]
+    limits: { max_limit: 50 }
+  - name: search_sops
+    description: Semantic search over the tenant's SOPs/runbooks (RAG)
+    backend: metadata-rca (read endpoint, PLACEHOLDER route)
+    read_only: true
+    roles: [sre, incident-viewer, tenant-admin]
+    limits: { max_limit: 20 }
+denied_by_design:
+  - any tool that applies, patches, deletes, scales, restarts, execs or rolls back resources
+  - any tool that returns secrets, environment variables or credentials
+  - shell / code execution tools

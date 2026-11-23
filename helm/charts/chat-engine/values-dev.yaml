@@ -1,0 +1,35 @@
+# chat-engine - dev overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+resources:
+  requests:
+    cpu: 50m
+    memory: 1Gi
+  limits:
+    cpu: '2'
+    memory: 1Gi
+rollout:
+  enabled: false
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+otel:
+  samplerRatio: '1.0'
+externalSecrets:
+- name: chat-engine-redis
+  remoteKey: rems/dev/redis/rems-dev-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.10.3.0/24
+    ports:
+    - 6379
+  - cidr: 10.10.4.0/24
+    ports:
+    - 6379
+  - cidr: 10.10.5.0/24
+    ports:
+    - 6379
+ingress:
+  host: app.dev.rems.example.com

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: mcp-server
+description: REMS MCP Server (secure, read-only tools for querying REMS observability data)
+type: application
+version: 1.0.0
+appVersion: 0.0.0-placeholder
+kubeVersion: '>=1.29.0-0'
+dependencies:
+- name: rems-common
+  version: 1.0.0
+  repository: file://../rems-common
+annotations:
+  rems.io/namespace: rems-ai

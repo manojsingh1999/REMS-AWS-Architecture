@@ -1,0 +1,43 @@
+# metadata-rca - dev overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+resources:
+  requests:
+    cpu: 50m
+    memory: 2Gi
+  limits:
+    cpu: '2'
+    memory: 2Gi
+rollout:
+  enabled: false
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+otel:
+  samplerRatio: '1.0'
+externalSecrets:
+- name: metadata-rca-db
+  remoteKey: rems/dev/aurora/rems-dev-rag/metadata-rca
+  refreshInterval: 1h
+  envFrom: false
+- name: metadata-rca-redis
+  remoteKey: rems/dev/redis/rems-dev-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.10.3.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.10.4.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.10.5.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 0.0.0.0/0
+    ports:
+    - 443

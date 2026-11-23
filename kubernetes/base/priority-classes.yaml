@@ -1,0 +1,36 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rems-critical
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Request-path services that must never be starved: rems-api, authorization-service."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rems-high
+value: 100000
+globalDefault: false
+description: "User-facing and AI services, observability backends."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rems-batch
+value: 1000
+globalDefault: false
+preemptionPolicy: Never
+description: "Background workers, scans, embedding backfills. Preemptible."
+---
+# Negative priority: placeholder pods are evicted first, giving instant headroom on traffic spikes
+# while Karpenter provisions replacement capacity.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rems-overprovision
+value: -10
+globalDefault: false
+preemptionPolicy: Never
+description: "Pause pods that reserve warm capacity."

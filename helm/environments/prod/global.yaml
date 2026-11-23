@@ -1,0 +1,18 @@
+# Shared values for every REMS chart in prod. Values come from `terraform output` of
+# terraform/environments/prod (edge.waf_acl_arn, edge.certificate_arn, buckets.alb_logs).
+global:
+  environment: prod
+  awsRegion: ap-south-1
+  vpcCidr: 10.30.0.0/16
+  dataSubnetCIDRs:
+  - 10.30.3.0/24
+  - 10.30.4.0/24
+  - 10.30.5.0/24
+  secretStore: aws-secrets-manager
+  ingress:
+    publicGroup: rems-public
+    internalGroup: rems-internal
+    certificateArn: arn:aws:acm:ap-south-1:333333333333:certificate/PLACEHOLDER
+    wafAclArn: arn:aws:wafv2:ap-south-1:333333333333:regional/webacl/rems-prod/PLACEHOLDER
+    accessLogsBucket: rems-prod-alb-logs-333333333333
+    deletionProtection: true

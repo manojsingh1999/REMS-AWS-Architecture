@@ -1,0 +1,123 @@
+# Validates everything ArgoCD will apply: Helm charts, kustomize overlays, ArgoCD manifests,
+# Kyverno/OPA policies and monitoring rules.
+name: k8s-validate
+
+on:
+  pull_request:
+    paths:
+      - "helm/**"
+      - "kubernetes/**"
+      - "cicd/**"
+      - "monitoring/**"
+      - "security/**"
+      - "ai-infrastructure/**"
+      - ".github/workflows/k8s-validate.yml"
+
+permissions:
+  contents: read
+
+env:
+  K8S_VERSION: "1.31.0"
+  CRD_SCHEMAS: "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: helm lint + template + kubeconform (7 charts x 3 environments)
+        run: |
+          set -euo pipefail
+          for chart in helm/charts/*/; do
+            name="$(basename "${chart}")"
+            [ "${name}" = "rems-common" ] && continue
+            helm dependency build "${chart}"
+            ns="$(yq '.annotations."rems.io/namespace"' "${chart}/Chart.yaml")"
+            for env in dev staging prod; do
+              args=(-f "${chart}/values-${env}.yaml" -f "helm/environments/${env}/global.yaml")
+              helm lint --strict "${chart}" "${args[@]}"
+              helm template "${name}" "${chart}" -n "${ns}" "${args[@]}" \
+                | kubeconform -strict -summary -kubernetes-version "${K8S_VERSION}" \
+                    -schema-location default -schema-location "${CRD_SCHEMAS}"
+            done
+          done
+
+  kyverno:
+    name: Kyverno admission policies vs. prod manifests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # pull access to ECR so verifyImages can check cosign signatures of the promoted images
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PULL_ROLE }}
+          aws-region: ap-south-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Install Kyverno CLI
+        run: |
+          curl -sSL https://github.com/kyverno/kyverno/releases/download/v1.13.2/kyverno-cli_v1.13.2_linux_x86_64.tar.gz | tar xz kyverno
+          sudo mv kyverno /usr/local/bin/
+      - name: Render prod charts
+        run: |
+          set -euo pipefail
+          mkdir -p rendered
+          for chart in helm/charts/*/; do
+            name="$(basename "${chart}")"
+            [ "${name}" = "rems-common" ] && continue
+            helm dependency build "${chart}"
+            ns="$(yq '.annotations."rems.io/namespace"' "${chart}/Chart.yaml")"
+            helm template "${name}" "${chart}" -n "${ns}" -f "${chart}/values-prod.yaml" -f helm/environments/prod/global.yaml > "rendered/${name}.yaml"
+          done
+      - name: kyverno apply (all policies, including signature verification)
+        run: kyverno apply security/kyverno/policies.yaml --resource rendered/ --detailed-results
+
+  kustomize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Build overlays and validate
+        run: |
+          set -euo pipefail
+          for o in kubernetes/overlays/*/; do
+            kubectl kustomize "${o}" | kubeconform -strict -summary -kubernetes-version "${K8S_VERSION}" \
+              -schema-location default -schema-location "${CRD_SCHEMAS}"
+          done
+      - name: Validate ArgoCD, Rollouts, Kyverno and Prometheus manifests
+        run: |
+          kubeconform -strict -summary -kubernetes-version "${K8S_VERSION}" \
+            -schema-location default -schema-location "${CRD_SCHEMAS}" \
+            cicd/argocd cicd/argo-rollouts security/kyverno monitoring/rules
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: OPA unit tests (authorization + MCP tool policies)
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+      - run: opa test security/opa -v
+      - name: yamllint
+        run: yamllint -c .yamllint.yaml .
+      - name: Checkov (Kubernetes + GitHub Actions)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: kubernetes
+          config_file: .checkov.yaml
+          framework: kubernetes

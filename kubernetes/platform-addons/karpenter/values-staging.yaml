@@ -1,0 +1,4 @@
+# staging (from terraform output karpenter)
+settings:
+  clusterName: rems-staging
+  interruptionQueue: rems-staging-karpenter

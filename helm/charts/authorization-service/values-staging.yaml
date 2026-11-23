@@ -1,0 +1,33 @@
+# authorization-service - staging overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+rollout:
+  enabled: true
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 4
+otel:
+  samplerRatio: '0.5'
+externalSecrets:
+- name: authorization-service-db
+  remoteKey: rems/staging/aurora/rems-staging-core/authorization-service
+  refreshInterval: 1h
+  envFrom: false
+- name: authorization-service-redis
+  remoteKey: rems/staging/redis/rems-staging-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.20.3.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.20.4.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.20.5.0/24
+    ports:
+    - 5432
+    - 6379

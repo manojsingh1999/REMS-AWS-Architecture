@@ -1,0 +1,70 @@
+# The seven REMS services in staging. Image tags change only through reviewed PRs
+# in the rems-microconfig repo (CI bot for dev, promote/rollback PRs above); ArgoCD + Argo Rollouts do the rest.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: rems-services-staging
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - { service: authorization-service, namespace: rems, wave: "1" }
+          - { service: rems-api, namespace: rems, wave: "2" }
+          - { service: data-governance, namespace: rems, wave: "2" }
+          - { service: metadata-rca, namespace: rems-ai, wave: "2" }
+          - { service: mcp-server, namespace: rems-ai, wave: "3" }
+          - { service: chat-engine, namespace: rems-ai, wave: "3" }
+          - { service: rems-frontend, namespace: rems, wave: "4" }
+  template:
+    metadata:
+      name: "rems-staging-{{.service}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{.wave}}"
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: rems-deployments
+        notifications.argoproj.io/subscribe.on-health-degraded.slack: rems-deployments
+      labels:
+        rems.io/layer: application
+        rems.io/service: "{{.service}}"
+    spec:
+      project: rems
+      # Charts from the platform repo, values (image tags) from the common microconfig repo.
+      sources:
+        - repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+          targetRevision: main
+          path: "helm/charts/{{.service}}"
+          helm:
+            releaseName: "{{.service}}"
+            valueFiles:
+              - $values/apps/{{.service}}/values-staging.yaml
+              - $values/env/staging/global.yaml
+        - repoURL: https://github.com/your-github-org/rems-microconfig.git
+          targetRevision: main
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.namespace}}"
+      revisionHistoryLimit: 20
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - PruneLast=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 20s
+            factor: 2
+            maxDuration: 5m
+      ignoreDifferences:
+        # Replica counts are owned by HPA/KEDA.
+        - group: argoproj.io
+          kind: Rollout
+          jsonPointers: [/spec/replicas]
+        - group: apps
+          kind: Deployment
+          jsonPointers: [/spec/replicas]

@@ -1,0 +1,126 @@
+# Grafana Loki 3.x (chart 6.x), SimpleScalable mode, multi-tenant, S3 backend.
+# Tenants: one per REMS customer (X-Scope-OrgID = tenant_id, set by the OTel gateway / REMS API from the
+# verified token) + "rems-platform" for the platform's own logs.
+deploymentMode: SimpleScalable
+
+serviceAccount:
+  create: true
+  name: loki # Pod Identity: s3 telemetry bucket, prefix loki/
+
+loki:
+  auth_enabled: true
+  schemaConfig:
+    configs:
+      - from: "2024-11-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  storage:
+    type: s3
+    bucketNames:
+      chunks: PLACEHOLDER-telemetry-bucket
+      ruler: PLACEHOLDER-telemetry-bucket
+      admin: PLACEHOLDER-telemetry-bucket
+    s3:
+      region: PLACEHOLDER-region
+      insecure: false
+      s3ForcePathStyle: false
+  storage_config:
+    aws:
+      bucketnames: PLACEHOLDER-telemetry-bucket
+      region: PLACEHOLDER-region
+    tsdb_shipper:
+      active_index_directory: /var/loki/tsdb-index
+      cache_location: /var/loki/tsdb-cache
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+    working_directory: /var/loki/compactor
+  limits_config:
+    # Defaults per tenant; premium tenants get overrides in runtimeConfig (cost control lever).
+    retention_period: 720h # 30 d default, up to 90 d per tenant contract
+    ingestion_rate_mb: 8
+    ingestion_burst_size_mb: 16
+    per_stream_rate_limit: 5MB
+    max_global_streams_per_user: 20000
+    max_label_names_per_series: 20
+    max_query_lookback: 2160h
+    max_query_parallelism: 32
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    allow_structured_metadata: true
+    volume_enabled: true
+  runtimeConfig:
+    overrides:
+      rems-platform:
+        retention_period: 2160h
+        ingestion_rate_mb: 20
+      # tenant-enterprise-example:
+      #   retention_period: 2160h
+      #   ingestion_rate_mb: 16
+  storage_class_overrides: {}
+
+write:
+  replicas: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 70
+  persistence:
+    storageClass: gp3
+    size: 50Gi
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+read:
+  replicas: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 9
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+backend:
+  replicas: 3
+  persistence:
+    storageClass: gp3
+    size: 20Gi
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+gateway:
+  enabled: true
+  replicas: 2
+
+chunksCache:
+  enabled: true
+  allocatedMemory: 4096
+resultsCache:
+  enabled: true
+
+minio:
+  enabled: false
+lokiCanary:
+  enabled: true
+test:
+  enabled: false
+monitoring:
+  serviceMonitor:
+    enabled: true

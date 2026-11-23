@@ -1,0 +1,18 @@
+# Shared values for every REMS chart in staging. Values come from `terraform output` of
+# terraform/environments/staging (edge.waf_acl_arn, edge.certificate_arn, buckets.alb_logs).
+global:
+  environment: staging
+  awsRegion: ap-south-1
+  vpcCidr: 10.20.0.0/16
+  dataSubnetCIDRs:
+  - 10.20.3.0/24
+  - 10.20.4.0/24
+  - 10.20.5.0/24
+  secretStore: aws-secrets-manager
+  ingress:
+    publicGroup: rems-public
+    internalGroup: rems-internal
+    certificateArn: arn:aws:acm:ap-south-1:222222222222:certificate/PLACEHOLDER
+    wafAclArn: arn:aws:wafv2:ap-south-1:222222222222:regional/webacl/rems-staging/PLACEHOLDER
+    accessLogsBucket: rems-staging-alb-logs-222222222222
+    deletionProtection: false

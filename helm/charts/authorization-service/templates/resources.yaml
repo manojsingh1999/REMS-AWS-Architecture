@@ -1,0 +1,2 @@
+{{- /* All objects come from the rems-common library chart; see values.yaml */ -}}
+{{ include "rems-common.all" . }}

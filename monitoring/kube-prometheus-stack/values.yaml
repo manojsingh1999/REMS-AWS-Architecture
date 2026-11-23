@@ -1,0 +1,225 @@
+# kube-prometheus-stack 66.x - self-monitoring of the REMS platform.
+# Prometheus keeps 15 days locally (HA pair); long-term platform metrics are remote-written to
+# VictoriaMetrics under the dedicated "rems-platform" account so dashboards survive Prometheus restarts.
+fullnameOverride: kube-prometheus-stack
+
+global:
+  rbac:
+    create: true
+
+defaultRules:
+  create: true
+  rules:
+    etcd: false # managed control plane
+    kubeScheduler: false
+    kubeControllerManager: false
+
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: true
+
+prometheus:
+  prometheusSpec:
+    replicas: 2
+    retention: 15d
+    retentionSize: 90GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    # Discover ServiceMonitors/PrometheusRules from every namespace that carries the release label.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    enableFeatures: [exemplar-storage, native-histograms]
+    enableRemoteWriteReceiver: true # Tempo metrics-generator pushes service-graph metrics here
+    externalLabels:
+      cluster: PLACEHOLDER-cluster-name
+    remoteWrite:
+      - url: http://vminsert-victoria-metrics-cluster.observability.svc:8480/insert/0/prometheus/api/v1/write
+        queueConfig:
+          maxSamplesPerSend: 10000
+          capacity: 20000
+        writeRelabelConfigs:
+          - sourceLabels: [__name__]
+            regex: "(apiserver_request_duration_seconds_bucket|etcd_.*)"
+            action: drop # high-cardinality series not needed long-term (cost control)
+    resources:
+      requests:
+        cpu: "1"
+        memory: 6Gi
+      limits:
+        memory: 6Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 100Gi
+    nodeSelector:
+      rems.io/node-pool: observability
+    tolerations:
+      - key: rems.io/dedicated
+        value: observability
+        effect: NoSchedule
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: prometheus
+    podDisruptionBudget:
+      enabled: true
+      maxUnavailable: 1
+
+alertmanager:
+  serviceAccount:
+    name: alertmanager # Pod Identity: sns:Publish on the alerts topic
+  alertmanagerSpec:
+    replicas: 3
+    retention: 120h
+    nodeSelector:
+      rems.io/node-pool: observability
+    tolerations:
+      - key: rems.io/dedicated
+        value: observability
+        effect: NoSchedule
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: slack-warnings
+      group_by: [alertname, namespace, service]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: "null"
+          matchers: ['alertname = "Watchdog"']
+        - receiver: pager
+          matchers: ['severity = "critical"']
+          continue: true
+        - receiver: security
+          matchers: ['category = "security"']
+        - receiver: slack-warnings
+          matchers: ['severity =~ "warning|info"']
+    inhibit_rules:
+      - source_matchers: ['severity = "critical"']
+        target_matchers: ['severity = "warning"']
+        equal: [alertname, namespace, service]
+      # An AZ outage explains many downstream symptoms - page once.
+      - source_matchers: ['alertname = "RemsAvailabilityZoneDegraded"']
+        target_matchers: ['severity = "warning"']
+    receivers:
+      - name: "null"
+      - name: pager
+        sns_configs:
+          - topic_arn: PLACEHOLDER-alerts-topic-arn # terraform output alerts_topic_arn
+            sigv4:
+              region: PLACEHOLDER-region
+            subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            message: '{{ range .Alerts }}{{ .Annotations.summary }} - runbook: {{ .Annotations.runbook_url }}{{ "\n" }}{{ end }}'
+      - name: security
+        sns_configs:
+          - topic_arn: PLACEHOLDER-alerts-topic-arn
+            sigv4:
+              region: PLACEHOLDER-region
+      - name: slack-warnings
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/alertmanager-slack/url
+            channel: "#rems-alerts"
+            send_resolved: true
+            title: '{{ .CommonLabels.alertname }} ({{ .CommonLabels.namespace }})'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ "\n" }}{{ end }}'
+
+grafana:
+  replicas: 2
+  defaultDashboardsTimezone: Asia/Kolkata
+  admin:
+    existingSecret: grafana-admin # ExternalSecret from rems/<env>/grafana/admin (break-glass only)
+  grafana.ini:
+    server:
+      root_url: https://grafana.internal.rems.example.com # PLACEHOLDER
+    auth:
+      disable_login_form: true
+    auth.generic_oauth:
+      enabled: true
+      name: REMS SSO
+      client_id: PLACEHOLDER-oidc-client-id
+      scopes: openid email profile
+      auth_url: PLACEHOLDER
+      token_url: PLACEHOLDER
+      api_url: PLACEHOLDER
+      role_attribute_path: contains(groups[*], 'rems-platform-admins') && 'Admin' || contains(groups[*], 'rems-oncall') && 'Editor' || 'Viewer'
+  persistence:
+    enabled: false # dashboards are code (sidecar); state in a DB is not needed
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+  additionalDataSources:
+    - name: Loki (platform)
+      type: loki
+      uid: loki-platform
+      url: http://loki-gateway.observability.svc
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+        derivedFields:
+          - name: trace_id
+            matcherRegex: '"trace_id":"(\w+)"'
+            datasourceUid: tempo-platform
+            url: "$${__value.raw}"
+      secureJsonData:
+        httpHeaderValue1: rems-platform
+    - name: Tempo (platform)
+      type: tempo
+      uid: tempo-platform
+      url: http://tempo-query-frontend.observability.svc:3200
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+        serviceMap:
+          datasourceUid: prometheus
+        tracesToLogsV2:
+          datasourceUid: loki-platform
+          filterByTraceID: true
+        nodeGraph:
+          enabled: true
+      secureJsonData:
+        httpHeaderValue1: rems-platform
+    - name: VictoriaMetrics (long-term platform)
+      type: prometheus
+      uid: vm-platform
+      url: http://vmselect-victoria-metrics-cluster.observability.svc:8481/select/0/prometheus
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+prometheus-node-exporter:
+  tolerations:
+    - operator: Exists # every node, including tainted pools
+
+kube-state-metrics:
+  metricLabelsAllowlist:
+    - pods=[app.kubernetes.io/name,app.kubernetes.io/component]
+    - nodes=[karpenter.sh/nodepool,topology.kubernetes.io/zone,karpenter.sh/capacity-type]

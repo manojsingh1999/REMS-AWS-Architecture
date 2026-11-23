@@ -1,0 +1,4 @@
+# prod-dr
+clusterName: rems-prod-dr
+region: ap-southeast-1
+vpcId: PLACEHOLDER-prod-dr-vpc-id # terraform output vpc_id

@@ -1,0 +1,38 @@
+# Distributed k6 run inside the staging cluster (k6-operator) for scenarios that need > 1 runner
+# (spike-10x, db-bottleneck). `k6 archive` bundles the scenario, its lib imports and the endpoint catalogue:
+#   (cd load-testing/k6/scenarios && k6 archive spike-10x.js -O /tmp/spike-10x.tar)
+#   kubectl -n loadtest create configmap rems-k6 --from-file=/tmp/spike-10x.tar
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: rems-spike-10x
+  namespace: loadtest
+spec:
+  parallelism: 4 # arrival rate and VUs are split across 4 runner pods
+  separate: true # one runner per node to avoid client-side saturation
+  script:
+    configMap:
+      name: rems-k6
+      file: spike-10x.tar
+  arguments: --tag testid=spike-10x
+  runner:
+    env:
+      - name: BASE_URL
+        value: https://app.staging.rems.example.com
+      - name: ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: k6-test-tenant
+            key: token
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+      limits:
+        memory: 4Gi
+    nodeSelector:
+      rems.io/node-pool: workers
+    tolerations:
+      - key: rems.io/dedicated
+        value: workers
+        effect: NoSchedule

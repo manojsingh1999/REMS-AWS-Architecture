@@ -1,0 +1,4 @@
+# prod-dr (from terraform output karpenter)
+settings:
+  clusterName: rems-prod-dr
+  interruptionQueue: rems-prod-dr-karpenter

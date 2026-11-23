@@ -1,0 +1,38 @@
+# Checkov configuration for this repository.
+# Every skip below is a reviewed false positive or an intentional design decision.
+framework:
+  - terraform
+  - kubernetes
+  - github_actions
+  - dockerfile
+compact: true
+quiet: true
+skip-check:
+  # KMS key policies must use Resource "*" (it means "this key"); Describe/List APIs do not support resource scoping.
+  - CKV_AWS_356
+  - CKV_AWS_111
+  - CKV_AWS_109
+  # S3 event notifications are not required for state/telemetry/log buckets.
+  - CKV2_AWS_62
+  # Third-party LLM API keys cannot be auto-rotated by Secrets Manager; rotation is a runbook (security/secrets-rotation.md).
+  # Aurora service passwords are rotated by the same runbook (RDS Proxy + ESO pick up new versions).
+  - CKV2_AWS_57
+  # Retention is set per data class (invocation logs 90 d, flow logs 90 d) for cost; audit/CloudTrail keep >= 1 year.
+  - CKV_AWS_338
+  # Abort-incomplete-multipart is set in every lifecycle rule via dynamic blocks (checkov cannot evaluate them).
+  - CKV_AWS_300
+  # Aurora is protected by AWS Backup through tag-based selection (backup=rems-critical), invisible to static analysis.
+  - CKV2_AWS_8
+  # Security groups / EIPs / Multi-AZ are attached or enabled conditionally (count/for_each) - false positives.
+  - CKV2_AWS_5
+  - CKV2_AWS_19
+  - CKV2_AWS_50
+  # ALB access-log and telemetry buckets are intentionally unversioned (immutable, short-lived objects; cost).
+  - CKV_AWS_21
+  # --- Kubernetes
+  # Immutable date tags (YYYY.MM.DD-run) + ECR IMMUTABLE repos make IfNotPresent correct and avoid registry dependency on restarts.
+  - CKV_K8S_15
+  # Digests are pinned by the GitOps workflow (image.digest written by app-build and the microconfig promote workflow); dev may use tags only.
+  - CKV_K8S_43
+  # Only rems-api and mcp-server mount a token, bound to the read-only rems-k8s-observer ClusterRole (PDF: K8s integration).
+  - CKV_K8S_38

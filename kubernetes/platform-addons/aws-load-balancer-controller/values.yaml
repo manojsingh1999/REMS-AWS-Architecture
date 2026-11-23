@@ -1,0 +1,23 @@
+replicaCount: 2
+clusterName: PLACEHOLDER-cluster-name
+region: PLACEHOLDER-region  # required: IMDS hop limit 1 blocks auto-discovery
+vpcId: PLACEHOLDER-vpc-id   # terraform output vpc_id
+serviceAccount:
+  name: aws-load-balancer-controller # Pod Identity association in terraform/modules/rems-environment/identities.tf
+enableServiceMutatorWebhook: false
+defaultTargetType: ip
+enableWafv2: true
+enableShield: false
+podDisruptionBudget:
+  maxUnavailable: 1
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 256Mi

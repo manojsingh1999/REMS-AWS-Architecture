@@ -1,0 +1,217 @@
+# Karpenter v1 node classes and pools. CLUSTER_NAME / NODE_ROLE are patched per environment
+# by kustomize overlays (values come from `terraform output karpenter`).
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  role: CLUSTER_NAME-karpenter-node
+  amiSelectorTerms:
+    - alias: al2023@latest # pinned to a dated alias in prod overlay
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: CLUSTER_NAME
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: CLUSTER_NAME
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1 # pods cannot reach IMDS
+    httpTokens: required
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 80Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+  tags:
+    Project: REMS
+    ManagedBy: karpenter
+---
+# Stateless REMS services. On-demand floor + Spot for burst in prod (via weight/capacity-type).
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: general
+spec:
+  weight: 50
+  template:
+    metadata:
+      labels:
+        rems.io/node-pool: general
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h
+      requirements:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: [AZ_A, AZ_B, AZ_C]
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64, amd64]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [on-demand, spot]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: [c, m, r]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: [large, xlarge, 2xlarge, 4xlarge]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 5m
+    budgets:
+      - nodes: "10%"
+  limits:
+    cpu: "400"
+    memory: 1600Gi
+---
+# AI services: memory-optimised, on-demand only, no consolidation churn in business hours.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ai
+spec:
+  weight: 40
+  template:
+    metadata:
+      labels:
+        rems.io/node-pool: ai
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h
+      taints:
+        - key: rems.io/dedicated
+          value: ai
+          effect: NoSchedule
+      requirements:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: [AZ_A, AZ_B, AZ_C]
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64, amd64]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [on-demand]
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: [r7g, r6g, r7i, r6i]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: [xlarge, 2xlarge, 4xlarge]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 15m
+    budgets:
+      - nodes: "0"
+        schedule: "30 3 * * mon-fri" # 09:00 IST
+        duration: 10h
+      - nodes: "10%"
+  limits:
+    cpu: "200"
+    memory: 1600Gi
+---
+# Observability backends (VictoriaMetrics, Loki, Tempo, Prometheus): stable on-demand nodes.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: observability
+spec:
+  weight: 30
+  template:
+    metadata:
+      labels:
+        rems.io/node-pool: observability
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h
+      taints:
+        - key: rems.io/dedicated
+          value: observability
+          effect: NoSchedule
+      requirements:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: [AZ_A, AZ_B, AZ_C]
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [on-demand]
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: [m7g, r7g, m6g, r6g]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: [xlarge, 2xlarge, 4xlarge]
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30m
+    budgets:
+      - nodes: "1"
+  limits:
+    cpu: "160"
+    memory: 1000Gi
+---
+# Background workers and batch scans: Spot-first, aggressively consolidated.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: workers
+spec:
+  weight: 10
+  template:
+    metadata:
+      labels:
+        rems.io/node-pool: workers
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 168h
+      taints:
+        - key: rems.io/dedicated
+          value: workers
+          effect: NoSchedule
+      requirements:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: [AZ_A, AZ_B, AZ_C]
+        - key: kubernetes.io/arch
+          operator: In
+          values: [arm64, amd64]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [spot, on-demand]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: [c, m]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+    budgets:
+      - nodes: "20%"
+  limits:
+    cpu: "300"
+    memory: 1200Gi

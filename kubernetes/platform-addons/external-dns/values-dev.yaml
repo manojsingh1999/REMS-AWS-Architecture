@@ -1,0 +1,4 @@
+# dev
+txtOwnerId: rems-dev
+domainFilters:
+  - dev.rems.example.com

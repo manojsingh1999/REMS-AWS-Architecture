@@ -1,0 +1,28 @@
+# chat-engine - staging overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+rollout:
+  enabled: true
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 4
+otel:
+  samplerRatio: '0.5'
+externalSecrets:
+- name: chat-engine-redis
+  remoteKey: rems/staging/redis/rems-staging-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.20.3.0/24
+    ports:
+    - 6379
+  - cidr: 10.20.4.0/24
+    ports:
+    - 6379
+  - cidr: 10.20.5.0/24
+    ports:
+    - 6379
+ingress:
+  host: app.staging.rems.example.com

@@ -1,0 +1,154 @@
+# LLM gateway: LiteLLM proxy (chart oci://ghcr.io/berriai/litellm-helm). Verify key names against the pinned
+# chart version before the first deploy - the chart evolves quickly.
+#
+# Why a gateway: one choke point for provider quotas, per-tenant budgets/RPM, retries, fallbacks,
+# circuit breaking, caching, guardrails and spend metrics. chat-engine and metadata-rca call
+# http://llm-gateway.rems-ai.svc:4000 (OpenAI-compatible API) and never hold provider credentials.
+nameOverride: llm-gateway
+fullnameOverride: llm-gateway # Service llm-gateway.rems-ai.svc:4000, pod label app.kubernetes.io/name=llm-gateway
+replicaCount: 3
+
+image:
+  repository: ghcr.io/berriai/litellm
+  tag: PLACEHOLDER-pinned-version # pin a reviewed release; mirror into ECR for prod
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: llm-gateway # Pod Identity -> bedrock:InvokeModel* on approved models + ApplyGuardrail + provider key secrets
+
+service:
+  type: ClusterIP
+  port: 4000
+
+masterkeySecretName: llm-gateway-master-key # ExternalSecret (rems/<env>/llm/master-key)
+masterkeySecretKey: masterkey
+
+# Spend tracking, virtual keys and team (tenant) budgets live in Postgres (rems_llmgw on rems-core via RDS Proxy).
+db:
+  useExisting: true
+  deployStandalone: false
+  endpoint: PLACEHOLDER-rems-core-proxy-endpoint
+  database: rems_llmgw
+  secret:
+    name: llm-gateway-db
+    usernameKey: username
+    passwordKey: password
+
+environmentSecrets:
+  - llm-gateway-provider-keys # OPENAI_API_KEY, ANTHROPIC_API_KEY (fallback providers only)
+  - llm-gateway-redis # REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+
+envVars:
+  AWS_REGION: PLACEHOLDER-region
+  LITELLM_LOG: INFO
+  REDIS_SSL: "True"
+
+proxy_config:
+  model_list:
+    # ---- primary: Amazon Bedrock over the VPC endpoint (data stays in AWS, not used for training)
+    - model_name: rems-reasoning # final RCA narratives, complex chat
+      litellm_params:
+        model: bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
+        aws_region_name: os.environ/AWS_REGION
+        max_tokens: 4096
+        rpm: 200
+        tpm: 400000
+    - model_name: rems-fast # classification, summarisation, tool routing
+      litellm_params:
+        model: bedrock/anthropic.claude-3-haiku-20240307-v1:0
+        aws_region_name: os.environ/AWS_REGION
+        max_tokens: 2048
+        rpm: 1000
+    - model_name: rems-embed
+      litellm_params:
+        model: bedrock/amazon.titan-embed-text-v2:0
+        aws_region_name: os.environ/AWS_REGION
+    # ---- fallbacks: external providers, reached through NAT + Network Firewall FQDN allow-list
+    - model_name: rems-reasoning-fallback
+      litellm_params:
+        model: anthropic/claude-3-5-sonnet-20241022
+        api_key: os.environ/ANTHROPIC_API_KEY
+        max_tokens: 4096
+    - model_name: rems-fast-fallback
+      litellm_params:
+        model: openai/gpt-4o-mini
+        api_key: os.environ/OPENAI_API_KEY
+        max_tokens: 2048
+
+  router_settings:
+    routing_strategy: usage-based-routing-v2 # respects rpm/tpm per deployment (provider quotas)
+    num_retries: 2
+    retry_after: 2
+    timeout: 60
+    allowed_fails: 5 # circuit breaker: 5 failures ...
+    cooldown_time: 60 # ... opens for 60 s, then half-open
+    fallbacks:
+      - rems-reasoning: [rems-reasoning-fallback]
+      - rems-fast: [rems-fast-fallback]
+    # Tenants that forbid external providers get keys restricted to the Bedrock model group (team settings).
+    redis_host: os.environ/REDIS_HOST
+    redis_port: os.environ/REDIS_PORT
+    redis_password: os.environ/REDIS_PASSWORD
+
+  litellm_settings:
+    drop_params: true
+    request_timeout: 60
+    cache: true
+    cache_params:
+      type: redis
+      ttl: 3600
+      host: os.environ/REDIS_HOST
+      port: os.environ/REDIS_PORT
+      password: os.environ/REDIS_PASSWORD
+    callbacks: [prometheus]
+    turn_off_message_logging: true # prompts/responses are NOT persisted by the gateway
+
+  guardrails:
+    - guardrail_name: bedrock-guardrail
+      litellm_params:
+        guardrail: bedrock
+        mode: during_call
+        guardrailIdentifier: PLACEHOLDER-guardrail-id # terraform output ai.guardrail_id
+        guardrailVersion: PLACEHOLDER-guardrail-version
+        default_on: true
+
+  general_settings:
+    master_key: os.environ/PROXY_MASTER_KEY
+    database_url: os.environ/DATABASE_URL
+    # Per-tenant ("team") budgets and limits are created by the onboarding runbook via the admin API:
+    #   POST /team/new {"team_alias": "<tenant_id>", "max_budget": 500, "budget_duration": "30d",
+    #                   "rpm_limit": 300, "tpm_limit": 300000, "models": ["rems-reasoning","rems-fast","rems-embed"]}
+    max_parallel_requests: 400
+    global_max_parallel_requests: 1200
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 60
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+nodeSelector:
+  rems.io/node-pool: ai
+tolerations:
+  - key: rems.io/dedicated
+    value: ai
+    effect: NoSchedule

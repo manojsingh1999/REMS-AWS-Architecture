@@ -1,0 +1,70 @@
+# gp3 encrypted storage (account default EBS CMK applies), topology-aware binding.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+parameters:
+  type: gp3
+  encrypted: "true"
+  fsType: ext4
+---
+# Warm headroom: pause pods with negative priority. A sudden 10x spike preempts these
+# instantly (pods land on already-running nodes) while Karpenter adds capacity.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overprovisioning
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: overprovisioning
+  annotations:
+    checkov.io/skip1: CKV_K8S_8=pause container serves nothing; liveness probe not applicable
+    checkov.io/skip2: CKV_K8S_9=pause container serves nothing; readiness probe not applicable
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: overprovisioning
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: overprovisioning
+    spec:
+      priorityClassName: rems-overprovision
+      terminationGracePeriodSeconds: 0
+      automountServiceAccountToken: false
+      nodeSelector:
+        rems.io/node-pool: general
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: overprovisioning
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65535
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

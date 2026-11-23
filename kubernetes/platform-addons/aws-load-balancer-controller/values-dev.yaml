@@ -1,0 +1,4 @@
+# dev
+clusterName: rems-dev
+region: ap-south-1
+vpcId: PLACEHOLDER-dev-vpc-id # terraform output vpc_id

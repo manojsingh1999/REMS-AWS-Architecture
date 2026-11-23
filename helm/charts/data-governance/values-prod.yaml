@@ -1,0 +1,33 @@
+# data-governance - prod overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+rollout:
+  enabled: true
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 10
+otel:
+  samplerRatio: '0.1'
+externalSecrets:
+- name: data-governance-db
+  remoteKey: rems/prod/aurora/rems-prod-core/data-governance
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.30.3.0/24
+    ports:
+    - 5432
+  - cidr: 10.30.4.0/24
+    ports:
+    - 5432
+  - cidr: 10.30.5.0/24
+    ports:
+    - 5432
+  - cidr: 10.30.0.0/16
+    ports:
+    - 443
+  - cidr: 172.31.0.0/16
+    ports:
+    - 5432
+    - 3306

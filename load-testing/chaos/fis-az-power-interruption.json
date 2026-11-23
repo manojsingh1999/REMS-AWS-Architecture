@@ -1,0 +1,71 @@
+{
+  "description": "REMS single-AZ failure drill: isolate one AZ's subnets, fail over Aurora writers, interrupt ElastiCache in the AZ and terminate EKS nodes there. Placeholders AZ_NAME / ACCOUNT_ID / ENV are filled by run-chaos.sh.",
+  "roleArn": "arn:aws:iam::ACCOUNT_ID:role/rems-ENV-fis",
+  "stopConditions": [
+    { "source": "aws:cloudwatch:alarm", "value": "arn:aws:cloudwatch:REGION:ACCOUNT_ID:alarm:rems-ENV-core-writer-cpu-high" }
+  ],
+  "targets": {
+    "AppSubnets": {
+      "resourceType": "aws:ec2:subnet",
+      "resourceTags": { "Tier": "private-app", "Environment": "ENV" },
+      "filters": [ { "path": "AvailabilityZone", "values": ["AZ_NAME"] } ],
+      "selectionMode": "ALL"
+    },
+    "DataSubnets": {
+      "resourceType": "aws:ec2:subnet",
+      "resourceTags": { "Tier": "private-data", "Environment": "ENV" },
+      "filters": [ { "path": "AvailabilityZone", "values": ["AZ_NAME"] } ],
+      "selectionMode": "ALL"
+    },
+    "AuroraClusters": {
+      "resourceType": "aws:rds:cluster",
+      "resourceTags": { "Project": "REMS", "Environment": "ENV" },
+      "selectionMode": "ALL"
+    },
+    "CacheGroups": {
+      "resourceType": "aws:elasticache:replicationgroup",
+      "resourceTags": { "Project": "REMS", "Environment": "ENV" },
+      "selectionMode": "ALL"
+    },
+    "EksNodesInAz": {
+      "resourceType": "aws:ec2:instance",
+      "resourceTags": { "kubernetes.io/cluster/rems-ENV": "owned" },
+      "filters": [
+        { "path": "Placement.AvailabilityZone", "values": ["AZ_NAME"] },
+        { "path": "State.Name", "values": ["running"] }
+      ],
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "DisruptAppNetwork": {
+      "actionId": "aws:network:disrupt-connectivity",
+      "parameters": { "duration": "PT20M", "scope": "all" },
+      "targets": { "Subnets": "AppSubnets" }
+    },
+    "DisruptDataNetwork": {
+      "actionId": "aws:network:disrupt-connectivity",
+      "parameters": { "duration": "PT20M", "scope": "all" },
+      "targets": { "Subnets": "DataSubnets" }
+    },
+    "FailoverAurora": {
+      "actionId": "aws:rds:failover-db-cluster",
+      "targets": { "Clusters": "AuroraClusters" }
+    },
+    "InterruptCacheAz": {
+      "actionId": "aws:elasticache:replicationgroup-interrupt-az-power",
+      "parameters": { "duration": "PT20M", "availabilityZoneIdentifier": "AZ_NAME" },
+      "targets": { "ReplicationGroups": "CacheGroups" }
+    },
+    "TerminateNodes": {
+      "actionId": "aws:ec2:terminate-instances",
+      "targets": { "Instances": "EksNodesInAz" },
+      "startAfter": ["DisruptAppNetwork"]
+    }
+  },
+  "logConfiguration": {
+    "cloudWatchLogsConfiguration": { "logGroupArn": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/rems/ENV/fis:*" },
+    "logSchemaVersion": 2
+  },
+  "tags": { "Project": "REMS", "Purpose": "az-failure-drill" }
+}

@@ -1,0 +1,76 @@
+# VictoriaMetrics cluster (OSS) - REMS product metrics store (tenant metrics, 30-90 d) and long-term
+# platform metrics (accountID 0 = rems-platform). Multi-tenancy via /insert/<accountID>/ and /select/<accountID>/.
+vmselect:
+  replicaCount: 3
+  extraArgs:
+    dedup.minScrapeInterval: 30s # dedups the HA Prometheus pair
+    search.maxConcurrentRequests: 16
+    search.maxQueryDuration: 60s
+  cacheMountPath: /cache
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 20Gi
+  horizontalPodAutoscaler:
+    enabled: true
+    maxReplicas: 6
+    minReplicas: 3
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+vminsert:
+  replicaCount: 3
+  extraArgs:
+    replicationFactor: "2" # survive loss of one vmstorage node / AZ
+    maxLabelsPerTimeseries: "40"
+  horizontalPodAutoscaler:
+    enabled: true
+    maxReplicas: 9
+    minReplicas: 3
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+vmstorage:
+  replicaCount: 3
+  retentionPeriod: 90d
+  serviceAccount:
+    name: vmstorage
+  persistentVolume:
+    enabled: true
+    storageClass: gp3
+    size: 500Gi
+  extraArgs:
+    dedup.minScrapeInterval: 30s
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: topology.kubernetes.io/zone
+          labelSelector:
+            matchLabels:
+              app: vmstorage
+  nodeSelector:
+    rems.io/node-pool: observability
+  tolerations:
+    - key: rems.io/dedicated
+      value: observability
+      effect: NoSchedule
+
+serviceMonitor:
+  enabled: true

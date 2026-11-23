@@ -1,0 +1,4 @@
+# staging
+txtOwnerId: rems-staging
+domainFilters:
+  - staging.rems.example.com

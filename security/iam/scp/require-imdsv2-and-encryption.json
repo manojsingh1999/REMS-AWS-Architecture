@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireIMDSv2",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": { "StringNotEquals": { "ec2:MetadataHttpTokens": "required" } }
+    },
+    {
+      "Sid": "DenyIMDSv1Downgrade",
+      "Effect": "Deny",
+      "Action": "ec2:ModifyInstanceMetadataOptions",
+      "Resource": "*",
+      "Condition": { "StringNotEquals": { "ec2:MetadataHttpTokens": "required" } }
+    },
+    {
+      "Sid": "DenyUnencryptedEBS",
+      "Effect": "Deny",
+      "Action": ["ec2:CreateVolume", "ec2:RunInstances"],
+      "Resource": "arn:aws:ec2:*:*:volume/*",
+      "Condition": { "Bool": { "ec2:Encrypted": "false" } }
+    },
+    {
+      "Sid": "DenyUnencryptedRDS",
+      "Effect": "Deny",
+      "Action": ["rds:CreateDBCluster", "rds:CreateDBInstance"],
+      "Resource": "*",
+      "Condition": { "Bool": { "rds:StorageEncrypted": "false" } }
+    },
+    {
+      "Sid": "DenyPublicRDS",
+      "Effect": "Deny",
+      "Action": ["rds:CreateDBInstance", "rds:ModifyDBInstance"],
+      "Resource": "*",
+      "Condition": { "Bool": { "rds:PubliclyAccessible": "true" } }
+    },
+    {
+      "Sid": "DenyS3PublicAccessBlockChanges",
+      "Effect": "Deny",
+      "Action": ["s3:PutAccountPublicAccessBlock"],
+      "Resource": "*"
+    }
+  ]
+}

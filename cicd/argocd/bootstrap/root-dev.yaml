@@ -1,0 +1,22 @@
+# Bootstrap (once per cluster, after ArgoCD is installed):
+#   kubectl apply -n argocd -f cicd/argocd/projects/projects.yaml -f cicd/argocd/bootstrap/root-dev.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-github-org/REMS-AWS-Architecture.git
+    targetRevision: main
+    path: cicd/argocd/apps/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

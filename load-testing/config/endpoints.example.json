@@ -1,0 +1,19 @@
+{
+  "_comment": "PLACEHOLDER routes (assumption P7) - replace with paths from the REMS API / Chat Engine OpenAPI specs. Weights are relative.",
+  "read": [
+    { "name": "list_incidents", "method": "GET", "path": "/api/PLACEHOLDER/incidents?limit=20", "weight": 35 },
+    { "name": "list_alerts", "method": "GET", "path": "/api/PLACEHOLDER/alerts?status=firing&limit=50", "weight": 30 },
+    { "name": "dashboard_query", "method": "GET", "path": "/api/PLACEHOLDER/dashboards/overview?range=1h", "weight": 20 },
+    { "name": "get_rca", "method": "GET", "path": "/api/PLACEHOLDER/rca/latest", "weight": 5 }
+  ],
+  "write": [
+    { "name": "ingest_events", "method": "POST", "path": "/api/PLACEHOLDER/events:batch", "weight": 10, "batch_size": 40 }
+  ],
+  "db_heavy": [
+    { "name": "search_incidents", "method": "GET", "path": "/api/PLACEHOLDER/incidents/search?q=latency&range=30d&limit=200", "weight": 50 },
+    { "name": "incident_timeline", "method": "GET", "path": "/api/PLACEHOLDER/incidents/PLACEHOLDER-id/timeline", "weight": 30 },
+    { "name": "governance_report", "method": "GET", "path": "/api/PLACEHOLDER/governance/reports?range=90d", "weight": 20 }
+  ],
+  "chat": { "name": "chat_message", "method": "POST", "path": "/chat/PLACEHOLDER/messages" },
+  "rca": { "name": "rca_generate", "method": "POST", "path": "/api/PLACEHOLDER/rca" }
+}

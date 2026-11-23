@@ -1,0 +1,203 @@
+# Admission policies (Kyverno 1.13). Enforced for REMS namespaces; audited cluster-wide.
+# Together with PSA "restricted" these implement the workload layer of defence in depth.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Only signed REMS images
+    policies.kyverno.io/description: >-
+      Images from the REMS ECR must carry a keyless cosign signature produced by the
+      app-build workflow of the organisation's GitHub repositories.
+spec:
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 15
+  failurePolicy: Fail
+  background: false
+  rules:
+    - name: verify-cosign-keyless
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai]
+      verifyImages:
+        - imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/rems/*"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/your-github-org/*/.github/workflows/app-build.yml@refs/heads/main"
+                    issuer: https://token.actions.githubusercontent.com
+                    rekor:
+                      url: https://rekor.sigstore.dev
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-restrict-registries
+  annotations:
+    policies.kyverno.io/title: Approved registries only
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: rems-namespaces-use-ecr
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai]
+      validate:
+        message: "REMS workloads must pull from the REMS ECR registry (or the approved LLM gateway image)."
+        pattern:
+          spec:
+            containers:
+              - image: "*.dkr.ecr.*.amazonaws.com/* | ghcr.io/berriai/*"
+            =(initContainers):
+              - image: "*.dkr.ecr.*.amazonaws.com/*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-workload-hardening
+  annotations:
+    policies.kyverno.io/title: Resources, probes, no latest tag, no host access
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-requests-and-memory-limits
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai]
+      validate:
+        message: "CPU/memory requests and a memory limit are required."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    memory: "?*"
+    - name: disallow-latest-tag
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system]
+      validate:
+        message: "Mutable ':latest' tags are not allowed; use immutable sha-<commit> tags or digests."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+    - name: require-readiness-probe
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai]
+      validate:
+        message: "A readinessProbe is required for zero-downtime deployments."
+        pattern:
+          spec:
+            containers:
+              - readinessProbe: {}
+    - name: no-host-namespaces-or-paths
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai, observability]
+      validate:
+        message: "hostNetwork/hostPID/hostIPC and hostPath volumes are forbidden."
+        pattern:
+          spec:
+            =(hostNetwork): false
+            =(hostPID): false
+            =(hostIPC): false
+            =(volumes):
+              - X(hostPath): "null"
+---
+# Interactive access to AI/MCP pods is a classic lateral-movement path: block exec/attach/port-forward
+# for everyone except the break-glass group.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-deny-exec-into-ai-pods
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: deny-exec-attach-portforward
+      match:
+        any:
+          - resources:
+              kinds: [Pod/exec, Pod/attach, Pod/portforward]
+              namespaces: [rems-ai]
+      exclude:
+        any:
+          - subjects:
+              - kind: Group
+                name: rems-break-glass
+      validate:
+        message: "exec/attach/port-forward into rems-ai pods is disabled (audit: security/audit-logging.md)."
+        deny: {}
+---
+# The MCP server identity must never gain write access: block RoleBindings that grant it anything
+# beyond the read-only rems-k8s-observer ClusterRole.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-mcp-readonly-guard
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: mcp-bindings-readonly
+      match:
+        any:
+          - resources:
+              kinds: [RoleBinding, ClusterRoleBinding]
+      preconditions:
+        any:
+          - key: "{{ request.object.subjects[?name=='mcp-server'] | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: "mcp-server may only be bound to the read-only rems-k8s-observer ClusterRole."
+        pattern:
+          roleRef:
+            name: rems-k8s-observer
+---
+# Pod Identity binds IAM roles by ServiceAccount name, so the shared 'default' account is never acceptable.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rems-require-service-account
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: no-default-service-account
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rems, rems-ai]
+      validate:
+        message: "Pods must use a dedicated ServiceAccount (Pod Identity binds by name), not 'default'."
+        pattern:
+          spec:
+            serviceAccountName: "!default"

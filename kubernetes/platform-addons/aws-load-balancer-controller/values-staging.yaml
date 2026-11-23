@@ -1,0 +1,4 @@
+# staging
+clusterName: rems-staging
+region: ap-south-1
+vpcId: PLACEHOLDER-staging-vpc-id # terraform output vpc_id

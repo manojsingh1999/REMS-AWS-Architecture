@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: terraform
+    directories: ["/terraform/environments/*", "/terraform/global/*", "/terraform/landing-zone"]
+    schedule:
+      interval: weekly

@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rems-ai-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: rems-ai
+    rules:
+    - alert: RemsLLMProviderErrors
+      expr: sum(rate(litellm_deployment_failure_responses_total[5m])) / clamp_min(sum(rate(litellm_deployment_total_requests_total[5m])), 1) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        category: ai
+      annotations:
+        summary: '> 5% of LLM calls failing at the provider - fallbacks engaged'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/ai-provider-outage.md
+    - alert: RemsLLMAllProvidersDown
+      expr: sum(rate(litellm_deployment_success_responses_total[5m])) == 0 and sum(rate(litellm_deployment_total_requests_total[5m])) > 0
+      for: 3m
+      labels:
+        severity: critical
+        category: ai
+      annotations:
+        summary: No successful LLM responses - chat/RCA in degraded (non-LLM) mode
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/ai-provider-outage.md
+    - alert: RemsTenantLLMBudgetNearlyExhausted
+      expr: litellm_remaining_team_budget_metric < 0.2 * litellm_team_max_budget_metric
+      for: 10m
+      labels:
+        severity: info
+        category: cost
+      annotations:
+        summary: Tenant {{ $labels.team_alias }} has < 20% of its monthly LLM budget left
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/ai-provider-outage.md
+    - alert: RemsMCPDeniedToolCalls
+      expr: sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name="mcp-server",http_response_status_code="403"}[5m])) > 0.5
+      for: 5m
+      labels:
+        severity: critical
+        category: security
+      annotations:
+        summary: Sustained denied MCP tool calls - possible compromised agent / prompt injection
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/compromised-mcp-tool.md

@@ -1,0 +1,19 @@
+# mcp-server - dev overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+resources:
+  requests:
+    cpu: 50m
+    memory: 512Mi
+  limits:
+    cpu: '1'
+    memory: 512Mi
+rollout:
+  enabled: false
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+otel:
+  samplerRatio: '1.0'
+ingress:
+  host: mcp.dev.rems.example.com

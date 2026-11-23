@@ -1,0 +1,69 @@
+# Roll a service back to the previous image tag in one environment (opens a labelled PR).
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service"
+        required: true
+        type: choice
+        options: [rems-frontend, rems-api, authorization-service, data-governance, metadata-rca, chat-engine, mcp-server]
+      environment:
+        description: "Environment"
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+      reason:
+        description: "Incident / reason"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+
+      - name: Find previous image
+        id: prev
+        env:
+          SVC: ${{ inputs.service }}
+          ENV_NAME: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          file="apps/${SVC}/values-${ENV_NAME}.yaml"
+          current="$(yq '.image.tag' "$file")"
+          previous=""
+          digest=""
+          for rev in $(git log --format=%H -- "$file"); do
+            tag="$(git show "${rev}:${file}" | yq '.image.tag')"
+            if [[ "$tag" != "$current" ]]; then
+              previous="$tag"
+              digest="$(git show "${rev}:${file}" | yq '.image.digest // ""')"
+              break
+            fi
+          done
+          [[ -n "$previous" ]] || { echo "::error::no previous tag for ${SVC} in ${ENV_NAME}"; exit 1; }
+          yq -i ".image.tag = \"${previous}\" | .image.digest = \"${digest}\"" "$file"
+          {
+            echo "current=${current}"
+            echo "previous=${previous}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open rollback PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: rollback/${{ inputs.service }}-${{ inputs.environment }}-${{ steps.prev.outputs.previous }}
+          title: "rollback(${{ inputs.environment }}): ${{ inputs.service }} ${{ steps.prev.outputs.current }} -> ${{ steps.prev.outputs.previous }}"
+          labels: rollback,${{ inputs.environment }}
+          commit-message: "rollback(${{ inputs.environment }}): ${{ inputs.service }} -> ${{ steps.prev.outputs.previous }}"
+          body: |
+            Reason: ${{ inputs.reason }}
+            Requested by @${{ github.actor }}. Merge to let ArgoCD sync the previous image.

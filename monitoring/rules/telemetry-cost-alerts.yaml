@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rems-telemetry-cost-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: rems-telemetry-cost
+    rules:
+    - record: rems:loki_ingested_bytes:rate1h_by_tenant
+      expr: sum by (tenant) (rate(loki_distributor_bytes_received_total[1h]))
+    - alert: RemsTenantLogVolumeSpike
+      expr: rems:loki_ingested_bytes:rate1h_by_tenant > 3 * avg_over_time(rems:loki_ingested_bytes:rate1h_by_tenant[7d])
+      for: 30m
+      labels:
+        severity: warning
+        category: cost
+      annotations:
+        summary: Tenant {{ $labels.tenant }} log ingestion is 3x its 7-day average
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/telemetry-cost-spike.md
+    - alert: RemsTenantIngestionRateLimited
+      expr: sum by (tenant) (rate(loki_discarded_samples_total{reason=~"rate_limited|per_stream_rate_limit"}[10m])) > 0
+      for: 15m
+      labels:
+        severity: info
+        category: cost
+      annotations:
+        summary: Tenant {{ $labels.tenant }} is hitting ingestion limits (data dropped by design)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/telemetry-cost-spike.md
+    - alert: RemsActiveSeriesGrowth
+      expr: sum(vm_cache_entries{type="storage/hour_metric_ids"}) > 1.5 * sum(vm_cache_entries{type="storage/hour_metric_ids"} offset 1d)
+      for: 1h
+      labels:
+        severity: warning
+        category: cost
+      annotations:
+        summary: Active metric series grew > 50% in a day (cardinality explosion)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/telemetry-cost-spike.md

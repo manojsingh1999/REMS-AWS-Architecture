@@ -1,0 +1,12 @@
+# mcp-server - staging overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+rollout:
+  enabled: true
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+otel:
+  samplerRatio: '0.5'
+ingress:
+  host: mcp.staging.rems.example.com

@@ -1,0 +1,4 @@
+# dev (from terraform output karpenter)
+settings:
+  clusterName: rems-dev
+  interruptionQueue: rems-dev-karpenter

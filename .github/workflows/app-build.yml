@@ -1,0 +1,282 @@
+# Reusable build pipeline called by every REMS service repository:
+#
+#   jobs:
+#     ci:
+#       uses: your-github-org/REMS-AWS-Architecture/.github/workflows/app-build.yml@main
+#       with:
+#         service: rems-api
+#         test-command: "pip install -r requirements-dev.txt && pytest -q --cov --cov-report=xml"
+#       secrets: inherit
+#
+# PR:    unit tests -> SonarQube quality gate -> Trivy fs (vulns, secrets, IaC)
+# merge: date tag (YYYY.MM.DD-<run>) -> lint -> build -> Trivy image gate -> push to ECR (OIDC)
+#        -> SBOM + cosign signature -> git tag/release -> PR to the common microconfig repo (auto-merge)
+#        -> ArgoCD syncs dev (see terraform/cicd/argocd)
+name: app-build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "Service / ECR repository name (e.g. rems-api)"
+        required: true
+        type: string
+      context:
+        description: "Docker build context"
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        description: "Path to the Dockerfile"
+        required: false
+        type: string
+        default: "Dockerfile"
+      test-command:
+        description: "Unit test command (repository specific)"
+        required: false
+        type: string
+        default: ""
+      platforms:
+        description: "Target platforms"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+      config-repo:
+        description: "Common microconfig (GitOps) repository; defaults to the CONFIG_REPO variable set by terraform/cicd/github"
+        required: false
+        type: string
+        default: ""
+    outputs:
+      image-digest:
+        description: "Pushed image digest"
+        value: ${{ jobs.build.outputs.digest }}
+      image-tag:
+        description: "Date tag of the pushed image"
+        value: ${{ jobs.build.outputs.tag }}
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }} # e.g. 444444444444.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    if: inputs.test-command != ''
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: ${{ inputs.test-command }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  quality:
+    name: SonarQube quality gate
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: coverage
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=rems-${{ inputs.service }}
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.qualitygate.wait=true
+
+  scan-source:
+    name: Trivy filesystem (vulns, secrets, misconfig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  tag:
+    name: Create date tag
+    runs-on: ubuntu-latest
+    needs: [quality, scan-source]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Date tag (UTC) + run number, e.g. 2026.11.22-42
+        id: tag
+        run: echo "tag=$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    name: Lint (Dockerfile + manifests)
+    runs-on: ubuntu-latest
+    needs: [tag]
+    steps:
+      - uses: actions/checkout@v4
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ inputs.dockerfile }}
+          failure-threshold: error
+      - name: yamllint (repo YAML, if any)
+        run: |
+          if compgen -G "**/*.yaml" >/dev/null || compgen -G "*.yaml" >/dev/null; then
+            yamllint -d relaxed .
+          fi
+
+  build:
+    name: Build, Trivy gate, push, sign
+    runs-on: ubuntu-latest
+    needs: [tag, lint]
+    permissions:
+      contents: write # git tag + GitHub release
+      id-token: write # GitHub OIDC -> AWS STS, and cosign keyless signing
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      tag: ${{ needs.tag.outputs.tag }}
+    env:
+      IMAGE: ${{ vars.ECR_REGISTRY }}/rems/${{ inputs.service }}
+      TAG: ${{ needs.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (amd64, loaded locally for scanning - nothing pushed yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy image gate (fail on fixable HIGH/CRITICAL before anything is pushed)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Configure AWS credentials (OIDC, no static keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-${{ inputs.service }}-${{ github.run_id }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build multi-arch and push (immutable tag)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
+          cache-from: type=gha
+
+      - name: SBOM (SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless, verified by Kyverno at admission)
+        env:
+          REF: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+        run: |
+          cosign sign --yes "${REF}"
+          cosign attest --yes --type spdxjson --predicate sbom.spdx.json "${REF}"
+
+      - name: Git tag + GitHub release in the service repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          gh release create "${TAG}" --target "${GITHUB_SHA}" --title "${TAG}" \
+            --notes "Image: ${IMAGE}:${TAG}"$'\n'"Digest: ${DIGEST}" sbom.spdx.json
+
+  gitops-dev:
+    name: PR to microconfig repo (dev)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: GitHub App token scoped to the microconfig repo
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CONFIG_APP_ID }}
+          private-key: ${{ secrets.CONFIG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ inputs.config-repo != '' && inputs.config-repo || vars.CONFIG_REPO }}
+
+      - name: Checkout microconfig repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.config-repo != '' && inputs.config-repo || vars.CONFIG_REPO }}
+          token: ${{ steps.app.outputs.token }}
+          path: config
+
+      - name: Bump dev image tag and digest
+        working-directory: config
+        env:
+          SERVICE: ${{ inputs.service }}
+          TAG: ${{ needs.build.outputs.tag }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: yq -i ".image.tag = \"${TAG}\" | .image.digest = \"${DIGEST}\"" "apps/${SERVICE}/values-dev.yaml"
+
+      - name: Open PR (dev files have no CODEOWNER -> auto-merges when "validate" passes)
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: config
+          token: ${{ steps.app.outputs.token }}
+          branch: deploy/dev/${{ inputs.service }}-${{ needs.build.outputs.tag }}
+          title: "deploy(dev): ${{ inputs.service }} ${{ needs.build.outputs.tag }}"
+          commit-message: "deploy(dev): ${{ inputs.service }} ${{ needs.build.outputs.tag }}"
+          labels: deploy,dev
+          body: |
+            Source: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+            Digest: `${{ needs.build.outputs.digest }}` (Trivy-clean, cosign-signed)
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+        run: gh pr merge --auto --squash "${PR_URL}"

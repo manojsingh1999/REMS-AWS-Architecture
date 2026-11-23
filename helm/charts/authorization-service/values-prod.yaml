@@ -1,0 +1,36 @@
+# authorization-service - prod overrides (seed copy - the live file is apps/<svc>/values-<env>.yaml in rems-microconfig, managed by CI + promote PRs)
+image:
+  tag: sha-0000000
+rollout:
+  enabled: true
+autoscaling:
+  minReplicas: 3
+  maxReplicas: 20
+pdb:
+  enabled: true
+  minAvailable: 2
+otel:
+  samplerRatio: '0.1'
+externalSecrets:
+- name: authorization-service-db
+  remoteKey: rems/prod/aurora/rems-prod-core/authorization-service
+  refreshInterval: 1h
+  envFrom: false
+- name: authorization-service-redis
+  remoteKey: rems/prod/redis/rems-prod-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.30.3.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.30.4.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.30.5.0/24
+    ports:
+    - 5432
+    - 6379

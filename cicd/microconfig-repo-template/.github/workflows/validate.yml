@@ -1,0 +1,79 @@
+# Required status check "validate" on every PR to main (branch protection).
+name: validate
+
+on:
+  pull_request:
+    branches: [main]
+  pull_request_review:
+    types: [submitted, dismissed] # re-evaluate the two-person rule when reviews change
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.event.pull_request.base.ref }} # GITHUB_BASE_REF is unset on pull_request_review events
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: YAML syntax
+        run: |
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 300}}}' apps env
+
+      - name: Image tag and digest format
+        run: |
+          set -euo pipefail
+          rc=0
+          for f in apps/*/values-*.yaml; do
+            tag="$(yq '.image.tag // ""' "$f")"
+            digest="$(yq '.image.digest // ""' "$f")"
+            # date tags (YYYY.MM.DD-run) from CI; sha-* accepted for history
+            if ! [[ "$tag" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$ || "$tag" =~ ^sha-[0-9a-f]{7}$ ]]; then
+              echo "::error file=$f::invalid image.tag '$tag'"; rc=1
+            fi
+            if [[ -n "$digest" && ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error file=$f::invalid image.digest '$digest'"; rc=1
+            fi
+            if grep -q ':latest' "$f"; then
+              echo "::error file=$f::mutable :latest tag"; rc=1
+            fi
+          done
+          exit "$rc"
+
+      - name: Promotion order (prod tag must already be live in staging)
+        # Rollback PRs (label "rollback", created by rollback.yml) intentionally go back to an older tag.
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'rollback') }}
+        run: |
+          set -euo pipefail
+          rc=0
+          for prod in $(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'apps/*/values-prod.yaml'); do
+            svc_dir="$(dirname "$prod")"
+            prod_tag="$(yq '.image.tag' "$prod")"
+            staging_tag="$(yq '.image.tag' "${svc_dir}/values-staging.yaml")"
+            if [[ "$prod_tag" != "$staging_tag" ]]; then
+              echo "::error file=$prod::prod tag $prod_tag is not the tag running in staging ($staging_tag)"; rc=1
+            fi
+          done
+          exit "$rc"
+
+      - name: Two-person rule for prod (2 distinct approvals)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq '^(apps/[^/]+/values-prod(-dr)?\.yaml|env/prod(-dr)?/)'; then
+            approvals="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" --paginate \
+              --jq "[.[] | select(.state == \"APPROVED\" and .user.login != \"${AUTHOR}\") | .user.login] | unique | length")"
+            echo "prod change: ${approvals} distinct approval(s)"
+            if (( approvals < 2 )); then
+              echo "::error::prod changes need 2 approvals (platform + SRE); re-runs automatically on each review"
+              exit 1
+            fi
+          fi

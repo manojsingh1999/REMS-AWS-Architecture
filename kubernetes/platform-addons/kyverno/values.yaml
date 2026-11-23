@@ -1,0 +1,29 @@
+# HA admission controller; failurePolicy Fail for security policies (see security/kyverno).
+admissionController:
+  replicas: 3
+  nodeSelector:
+    rems.io/node-pool: system
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+backgroundController:
+  replicas: 2
+  nodeSelector:
+    rems.io/node-pool: system
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+reportsController:
+  replicas: 1
+cleanupController:
+  replicas: 1
+config:
+  webhooks:
+    - namespaceSelector:
+        matchExpressions:
+          - key: kubernetes.io/metadata.name
+            operator: NotIn
+            values: [kube-system, kyverno]

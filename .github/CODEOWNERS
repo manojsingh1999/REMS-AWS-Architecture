@@ -1,0 +1,6 @@
+# Production changes need the platform team; security-sensitive paths also need security review.
+*                                   @your-github-org/rems-platform
+/terraform/landing-zone/            @your-github-org/rems-platform @your-github-org/security
+/security/                          @your-github-org/security
+/helm/charts/*/values-prod.yaml     @your-github-org/rems-platform @your-github-org/rems-sre
+/terraform/environments/prod*/      @your-github-org/rems-platform @your-github-org/rems-sre

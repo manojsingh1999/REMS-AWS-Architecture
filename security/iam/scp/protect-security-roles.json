@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProtectPlatformRolesAndBoundaries",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy", "iam:DeleteRole", "iam:DeleteRolePermissionsBoundary", "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy", "iam:PutRolePermissionsBoundary", "iam:PutRolePolicy",
+        "iam:UpdateAssumeRolePolicy", "iam:UpdateRole", "iam:UpdateRoleDescription"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+        "arn:aws:iam::*:role/rems-*-github-terraform-apply",
+        "arn:aws:iam::*:role/rems-github-ecr-push"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+            "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_BreakGlass_*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectBoundaryPolicy",
+      "Effect": "Deny",
+      "Action": ["iam:CreatePolicyVersion", "iam:DeletePolicy", "iam:DeletePolicyVersion", "iam:SetDefaultPolicyVersion"],
+      "Resource": "arn:aws:iam::*:policy/rems-workload-boundary",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+            "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_BreakGlass_*"
+          ]
+        }
+      }
+    }
+  ]
+}

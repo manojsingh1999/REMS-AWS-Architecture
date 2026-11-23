@@ -1,0 +1,66 @@
+# Quotas cap the blast radius of a runaway autoscaler or bad deploy; LimitRanges give
+# sane defaults to any container that forgets to declare resources (Kyverno also rejects those).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rems-quota
+  namespace: rems
+spec:
+  hard:
+    requests.cpu: "120"
+    requests.memory: 240Gi
+    limits.memory: 240Gi
+    pods: "400"
+    services.loadbalancers: "0" # only Ingress (ALB) is allowed
+    services.nodeports: "0"
+    persistentvolumeclaims: "0"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rems-ai-quota
+  namespace: rems-ai
+spec:
+  hard:
+    requests.cpu: "80"
+    requests.memory: 200Gi
+    limits.memory: 200Gi
+    pods: "200"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: rems
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: "1"
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: rems-ai
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      default:
+        cpu: "1"
+        memory: 512Mi
+      max:
+        cpu: "8"
+        memory: 16Gi

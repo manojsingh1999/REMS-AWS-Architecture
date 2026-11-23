@@ -1,0 +1,8 @@
+# Kustomize component: supporting objects for the LLM gateway (secrets + network policy).
+# Included by kubernetes/overlays/<env>; the overlay rewrites the environment segment of every
+# Secrets Manager key through the `rems-env` replacement below.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - externalsecrets.yaml
+  - networkpolicy.yaml

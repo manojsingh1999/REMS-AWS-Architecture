@@ -1,0 +1,33 @@
+# authorization-service - prod-dr (ap-southeast-1) overrides, layered on values-prod.yaml.
+# Warm standby: 1 replica per service. During failover (runbooks/dr-regional-failover.md) the
+# 'dr-scale-up' PR deletes the autoscaling override so prod minimums apply.
+# Aurora secrets are Secrets Manager replicas (same names as primary); Redis is the DR cluster.
+autoscaling:
+  minReplicas: 1
+pdb:
+  enabled: true
+  minAvailable: null
+  maxUnavailable: 1
+externalSecrets:
+- name: authorization-service-db
+  remoteKey: rems/prod/aurora/rems-prod-core/authorization-service
+  refreshInterval: 1h
+  envFrom: false
+- name: authorization-service-redis
+  remoteKey: rems/prod/redis/rems-prod-dr-cache
+  refreshInterval: 1h
+  envFrom: false
+networkPolicy:
+  egressCIDRs:
+  - cidr: 10.40.3.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.40.4.0/24
+    ports:
+    - 5432
+    - 6379
+  - cidr: 10.40.5.0/24
+    ports:
+    - 5432
+    - 6379

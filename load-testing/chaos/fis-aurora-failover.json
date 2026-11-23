@@ -1,0 +1,16 @@
+{
+  "description": "Force Aurora writer failover on the REMS clusters (database tier AZ drill / PostgreSQL bottleneck drill).",
+  "roleArn": "arn:aws:iam::ACCOUNT_ID:role/rems-ENV-fis",
+  "stopConditions": [ { "source": "none" } ],
+  "targets": {
+    "AuroraClusters": {
+      "resourceType": "aws:rds:cluster",
+      "resourceTags": { "Project": "REMS", "Environment": "ENV" },
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "FailoverAurora": { "actionId": "aws:rds:failover-db-cluster", "targets": { "Clusters": "AuroraClusters" } }
+  },
+  "tags": { "Project": "REMS", "Purpose": "aurora-failover-drill" }
+}

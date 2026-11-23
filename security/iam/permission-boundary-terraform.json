@@ -1,0 +1,39 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowInfrastructureManagement",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyGuardrailTampering",
+      "Effect": "Deny",
+      "Action": [
+        "organizations:*", "account:*",
+        "cloudtrail:StopLogging", "cloudtrail:DeleteTrail",
+        "guardduty:DeleteDetector", "guardduty:Disassociate*",
+        "securityhub:DisableSecurityHub", "securityhub:Disassociate*",
+        "iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyBoundaryRemoval",
+      "Effect": "Deny",
+      "Action": ["iam:DeleteRolePermissionsBoundary", "iam:CreatePolicyVersion", "iam:DeletePolicy", "iam:SetDefaultPolicyVersion"],
+      "Resource": [
+        "arn:aws:iam::*:policy/rems-workload-boundary",
+        "arn:aws:iam::*:policy/rems-terraform-boundary",
+        "arn:aws:iam::*:role/rems-*-github-terraform-apply"
+      ]
+    },
+    {
+      "Sid": "DenySelfEscalation",
+      "Effect": "Deny",
+      "Action": ["iam:AttachRolePolicy", "iam:PutRolePolicy", "iam:UpdateAssumeRolePolicy", "iam:PutRolePermissionsBoundary"],
+      "Resource": "arn:aws:iam::*:role/rems-*-github-terraform-*"
+    }
+  ]
+}

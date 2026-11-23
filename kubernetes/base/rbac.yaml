@@ -1,0 +1,115 @@
+# Read-only cluster access for the REMS API's Kubernetes integration and the MCP server.
+# Deliberately excludes secrets, exec, attach, port-forward and every write verb.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rems-k8s-observer
+  labels:
+    rems.io/purpose: read-only-observability
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, endpoints, events, nodes, namespaces, configmaps, persistentvolumeclaims]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, networkpolicies]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [rollouts, analysisruns]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [pods, nodes]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rems-api-observer
+subjects:
+  - kind: ServiceAccount
+    name: rems-api
+    namespace: rems
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rems-k8s-observer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mcp-server-observer
+subjects:
+  - kind: ServiceAccount
+    name: mcp-server
+    namespace: rems-ai
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rems-k8s-observer
+---
+# Human roles (bound to IAM Identity Center groups through EKS access entries / groups).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rems-oncall
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, services, endpoints, events, nodes, namespaces, configmaps, persistentvolumeclaims, resourcequotas]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [get, list, watch]
+  - apiGroups: [policy]
+    resources: [poddisruptionbudgets]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, networkpolicies]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [rollouts, analysisruns, applications]
+    verbs: [get, list, watch]
+  - apiGroups: [keda.sh]
+    resources: [scaledobjects]
+    verbs: [get, list, watch]
+  - apiGroups: [karpenter.sh]
+    resources: [nodepools, nodeclaims]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [rollouts]
+    verbs: [patch] # abort / promote / undo canaries
+  - apiGroups: [apps]
+    resources: [deployments/scale, statefulsets/scale]
+    verbs: [patch, update]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [delete] # restart a stuck pod
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rems-oncall
+subjects:
+  - kind: Group
+    name: rems-oncall # mapped from the IAM Identity Center permission set via EKS access entry kubernetes_groups
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rems-oncall

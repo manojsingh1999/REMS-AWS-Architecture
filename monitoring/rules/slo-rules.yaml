@@ -1,0 +1,1080 @@
+# Generated from the SLO table in monitoring/slo/slos.md - multi-window, multi-burn-rate alerts (Google SRE workbook).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rems-slos
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    rems.io/rules: slo
+spec:
+  groups:
+  - name: rems-slo.recording
+    interval: 30s
+    rules:
+    - record: rems:slo_errors_ratio:rate5m
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))
+    - record: rems:slo_errors_ratio:rate30m
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[30m]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[30m]))
+    - record: rems:slo_errors_ratio:rate1h
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[1h]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[1h]))
+    - record: rems:slo_errors_ratio:rate2h
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[2h]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[2h]))
+    - record: rems:slo_errors_ratio:rate6h
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[6h]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[6h]))
+    - record: rems:slo_errors_ratio:rate1d
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[1d]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[1d]))
+    - record: rems:slo_errors_ratio:rate3d
+      expr: |-
+        sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[3d]))
+        /
+        sum by (service_name) (rate(http_server_request_duration_seconds_count[3d]))
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[5m]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[30m]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[1h]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[2h]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[6h]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[1d]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-api",le="0.5"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-api"}[3d]))
+        )
+      labels:
+        service_name: rems-api
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[5m]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[30m]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[1h]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[2h]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[6h]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[1d]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="authorization-service",le="0.1"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="authorization-service"}[3d]))
+        )
+      labels:
+        service_name: authorization-service
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[5m]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[30m]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[1h]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[2h]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[6h]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[1d]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="rems-frontend",le="0.5"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="rems-frontend"}[3d]))
+        )
+      labels:
+        service_name: rems-frontend
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[5m]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[30m]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[1h]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[2h]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[6h]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[1d]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="chat-engine",le="10"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="chat-engine"}[3d]))
+        )
+      labels:
+        service_name: chat-engine
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[5m]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[30m]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[1h]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[2h]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[6h]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[1d]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="metadata-rca",le="30"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="metadata-rca"}[3d]))
+        )
+      labels:
+        service_name: metadata-rca
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[5m]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[30m]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[1h]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[2h]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[6h]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[1d]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="mcp-server",le="2.5"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="mcp-server"}[3d]))
+        )
+      labels:
+        service_name: mcp-server
+    - record: rems:slo_latency_violations_ratio:rate5m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[5m]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate30m
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[30m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[30m]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate1h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[1h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[1h]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate2h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[2h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[2h]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate6h
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[6h]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[6h]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate1d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[1d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[1d]))
+        )
+      labels:
+        service_name: data-governance
+    - record: rems:slo_latency_violations_ratio:rate3d
+      expr: |-
+        1 - (
+          sum(rate(http_server_request_duration_seconds_bucket{service_name="data-governance",le="5"}[3d]))
+          /
+          sum(rate(http_server_request_duration_seconds_count{service_name="data-governance"}[3d]))
+        )
+      labels:
+        service_name: data-governance
+  - name: rems-slo.alerts
+    rules:
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="rems-api"} > (14.4 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="rems-api"} > (14.4 * 0.0005)
+      for: 2m
+      labels:
+        severity: critical
+        service: rems-api
+        slo: availability
+        window: 1h
+      annotations:
+        summary: rems-api is burning its 99.95% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="rems-api"} > (6 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="rems-api"} > (6 * 0.0005)
+      for: 15m
+      labels:
+        severity: critical
+        service: rems-api
+        slo: availability
+        window: 6h
+      annotations:
+        summary: rems-api is burning its 99.95% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="rems-api"} > (3 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="rems-api"} > (3 * 0.0005)
+      for: 1h
+      labels:
+        severity: warning
+        service: rems-api
+        slo: availability
+        window: 1d
+      annotations:
+        summary: rems-api is burning its 99.95% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="rems-api"} > (1 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="rems-api"} > (1 * 0.0005)
+      for: 3h
+      labels:
+        severity: warning
+        service: rems-api
+        slo: availability
+        window: 3d
+      annotations:
+        summary: rems-api is burning its 99.95% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="rems-api"} > (14.4 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="rems-api"} > (14.4 * 0.01)
+      for: 2m
+      labels:
+        severity: critical
+        service: rems-api
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'rems-api: more than 1.0% of requests slower than 0.5s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="rems-api"} > (6 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="rems-api"} > (6 * 0.01)
+      for: 15m
+      labels:
+        severity: critical
+        service: rems-api
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'rems-api: more than 1.0% of requests slower than 0.5s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="authorization-service"} > (14.4 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="authorization-service"} > (14.4 * 0.0005)
+      for: 2m
+      labels:
+        severity: critical
+        service: authorization-service
+        slo: availability
+        window: 1h
+      annotations:
+        summary: authorization-service is burning its 99.95% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="authorization-service"} > (6 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="authorization-service"} > (6 * 0.0005)
+      for: 15m
+      labels:
+        severity: critical
+        service: authorization-service
+        slo: availability
+        window: 6h
+      annotations:
+        summary: authorization-service is burning its 99.95% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="authorization-service"} > (3 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="authorization-service"} > (3 * 0.0005)
+      for: 1h
+      labels:
+        severity: warning
+        service: authorization-service
+        slo: availability
+        window: 1d
+      annotations:
+        summary: authorization-service is burning its 99.95% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="authorization-service"} > (1 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="authorization-service"} > (1 * 0.0005)
+      for: 3h
+      labels:
+        severity: warning
+        service: authorization-service
+        slo: availability
+        window: 3d
+      annotations:
+        summary: authorization-service is burning its 99.95% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="authorization-service"} > (14.4 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="authorization-service"} > (14.4 * 0.01)
+      for: 2m
+      labels:
+        severity: critical
+        service: authorization-service
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'authorization-service: more than 1.0% of requests slower than 0.1s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="authorization-service"} > (6 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="authorization-service"} > (6 * 0.01)
+      for: 15m
+      labels:
+        severity: critical
+        service: authorization-service
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'authorization-service: more than 1.0% of requests slower than 0.1s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="rems-frontend"} > (14.4 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="rems-frontend"} > (14.4 * 0.0005)
+      for: 2m
+      labels:
+        severity: critical
+        service: rems-frontend
+        slo: availability
+        window: 1h
+      annotations:
+        summary: rems-frontend is burning its 99.95% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="rems-frontend"} > (6 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="rems-frontend"} > (6 * 0.0005)
+      for: 15m
+      labels:
+        severity: critical
+        service: rems-frontend
+        slo: availability
+        window: 6h
+      annotations:
+        summary: rems-frontend is burning its 99.95% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="rems-frontend"} > (3 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="rems-frontend"} > (3 * 0.0005)
+      for: 1h
+      labels:
+        severity: warning
+        service: rems-frontend
+        slo: availability
+        window: 1d
+      annotations:
+        summary: rems-frontend is burning its 99.95% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="rems-frontend"} > (1 * 0.0005)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="rems-frontend"} > (1 * 0.0005)
+      for: 3h
+      labels:
+        severity: warning
+        service: rems-frontend
+        slo: availability
+        window: 3d
+      annotations:
+        summary: rems-frontend is burning its 99.95% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="rems-frontend"} > (14.4 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="rems-frontend"} > (14.4 * 0.01)
+      for: 2m
+      labels:
+        severity: warning
+        service: rems-frontend
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'rems-frontend: more than 1.0% of requests slower than 0.5s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="rems-frontend"} > (6 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="rems-frontend"} > (6 * 0.01)
+      for: 15m
+      labels:
+        severity: warning
+        service: rems-frontend
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'rems-frontend: more than 1.0% of requests slower than 0.5s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="chat-engine"} > (14.4 * 0.001)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="chat-engine"} > (14.4 * 0.001)
+      for: 2m
+      labels:
+        severity: critical
+        service: chat-engine
+        slo: availability
+        window: 1h
+      annotations:
+        summary: chat-engine is burning its 99.90% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="chat-engine"} > (6 * 0.001)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="chat-engine"} > (6 * 0.001)
+      for: 15m
+      labels:
+        severity: critical
+        service: chat-engine
+        slo: availability
+        window: 6h
+      annotations:
+        summary: chat-engine is burning its 99.90% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="chat-engine"} > (3 * 0.001)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="chat-engine"} > (3 * 0.001)
+      for: 1h
+      labels:
+        severity: warning
+        service: chat-engine
+        slo: availability
+        window: 1d
+      annotations:
+        summary: chat-engine is burning its 99.90% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="chat-engine"} > (1 * 0.001)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="chat-engine"} > (1 * 0.001)
+      for: 3h
+      labels:
+        severity: warning
+        service: chat-engine
+        slo: availability
+        window: 3d
+      annotations:
+        summary: chat-engine is burning its 99.90% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="chat-engine"} > (14.4 * 0.05)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="chat-engine"} > (14.4 * 0.05)
+      for: 2m
+      labels:
+        severity: warning
+        service: chat-engine
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'chat-engine: more than 5.0% of requests slower than 10s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="chat-engine"} > (6 * 0.05)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="chat-engine"} > (6 * 0.05)
+      for: 15m
+      labels:
+        severity: warning
+        service: chat-engine
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'chat-engine: more than 5.0% of requests slower than 10s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="metadata-rca"} > (14.4 * 0.001)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="metadata-rca"} > (14.4 * 0.001)
+      for: 2m
+      labels:
+        severity: critical
+        service: metadata-rca
+        slo: availability
+        window: 1h
+      annotations:
+        summary: metadata-rca is burning its 99.90% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="metadata-rca"} > (6 * 0.001)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="metadata-rca"} > (6 * 0.001)
+      for: 15m
+      labels:
+        severity: critical
+        service: metadata-rca
+        slo: availability
+        window: 6h
+      annotations:
+        summary: metadata-rca is burning its 99.90% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="metadata-rca"} > (3 * 0.001)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="metadata-rca"} > (3 * 0.001)
+      for: 1h
+      labels:
+        severity: warning
+        service: metadata-rca
+        slo: availability
+        window: 1d
+      annotations:
+        summary: metadata-rca is burning its 99.90% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="metadata-rca"} > (1 * 0.001)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="metadata-rca"} > (1 * 0.001)
+      for: 3h
+      labels:
+        severity: warning
+        service: metadata-rca
+        slo: availability
+        window: 3d
+      annotations:
+        summary: metadata-rca is burning its 99.90% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="metadata-rca"} > (14.4 * 0.05)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="metadata-rca"} > (14.4 * 0.05)
+      for: 2m
+      labels:
+        severity: warning
+        service: metadata-rca
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'metadata-rca: more than 5.0% of requests slower than 30s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="metadata-rca"} > (6 * 0.05)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="metadata-rca"} > (6 * 0.05)
+      for: 15m
+      labels:
+        severity: warning
+        service: metadata-rca
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'metadata-rca: more than 5.0% of requests slower than 30s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="mcp-server"} > (14.4 * 0.001)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="mcp-server"} > (14.4 * 0.001)
+      for: 2m
+      labels:
+        severity: critical
+        service: mcp-server
+        slo: availability
+        window: 1h
+      annotations:
+        summary: mcp-server is burning its 99.90% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="mcp-server"} > (6 * 0.001)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="mcp-server"} > (6 * 0.001)
+      for: 15m
+      labels:
+        severity: critical
+        service: mcp-server
+        slo: availability
+        window: 6h
+      annotations:
+        summary: mcp-server is burning its 99.90% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="mcp-server"} > (3 * 0.001)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="mcp-server"} > (3 * 0.001)
+      for: 1h
+      labels:
+        severity: warning
+        service: mcp-server
+        slo: availability
+        window: 1d
+      annotations:
+        summary: mcp-server is burning its 99.90% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="mcp-server"} > (1 * 0.001)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="mcp-server"} > (1 * 0.001)
+      for: 3h
+      labels:
+        severity: warning
+        service: mcp-server
+        slo: availability
+        window: 3d
+      annotations:
+        summary: mcp-server is burning its 99.90% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="mcp-server"} > (14.4 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="mcp-server"} > (14.4 * 0.01)
+      for: 2m
+      labels:
+        severity: warning
+        service: mcp-server
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'mcp-server: more than 1.0% of requests slower than 2.5s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="mcp-server"} > (6 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="mcp-server"} > (6 * 0.01)
+      for: 15m
+      labels:
+        severity: warning
+        service: mcp-server
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'mcp-server: more than 1.0% of requests slower than 2.5s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1h{service_name="data-governance"} > (14.4 * 0.001)
+        and
+        rems:slo_errors_ratio:rate5m{service_name="data-governance"} > (14.4 * 0.001)
+      for: 2m
+      labels:
+        severity: critical
+        service: data-governance
+        slo: availability
+        window: 1h
+      annotations:
+        summary: data-governance is burning its 99.90% availability error budget 14.4x too fast (1h/5m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate6h{service_name="data-governance"} > (6 * 0.001)
+        and
+        rems:slo_errors_ratio:rate30m{service_name="data-governance"} > (6 * 0.001)
+      for: 15m
+      labels:
+        severity: critical
+        service: data-governance
+        slo: availability
+        window: 6h
+      annotations:
+        summary: data-governance is burning its 99.90% availability error budget 6x too fast (6h/30m windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate1d{service_name="data-governance"} > (3 * 0.001)
+        and
+        rems:slo_errors_ratio:rate2h{service_name="data-governance"} > (3 * 0.001)
+      for: 1h
+      labels:
+        severity: warning
+        service: data-governance
+        slo: availability
+        window: 1d
+      annotations:
+        summary: data-governance is burning its 99.90% availability error budget 3x too fast (1d/2h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOAvailabilityBurnRate
+      expr: |-
+        rems:slo_errors_ratio:rate3d{service_name="data-governance"} > (1 * 0.001)
+        and
+        rems:slo_errors_ratio:rate6h{service_name="data-governance"} > (1 * 0.001)
+      for: 3h
+      labels:
+        severity: warning
+        service: data-governance
+        slo: availability
+        window: 3d
+      annotations:
+        summary: data-governance is burning its 99.90% availability error budget 1x too fast (3d/6h windows)
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate1h{service_name="data-governance"} > (14.4 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate5m{service_name="data-governance"} > (14.4 * 0.01)
+      for: 2m
+      labels:
+        severity: warning
+        service: data-governance
+        slo: latency
+        window: 1h
+      annotations:
+        summary: 'data-governance: more than 1.0% of requests slower than 5s (burn rate 14.4x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md
+    - alert: RemsSLOLatencyBurnRate
+      expr: |-
+        rems:slo_latency_violations_ratio:rate6h{service_name="data-governance"} > (6 * 0.01)
+        and
+        rems:slo_latency_violations_ratio:rate30m{service_name="data-governance"} > (6 * 0.01)
+      for: 15m
+      labels:
+        severity: warning
+        service: data-governance
+        slo: latency
+        window: 6h
+      annotations:
+        summary: 'data-governance: more than 1.0% of requests slower than 5s (burn rate 6x)'
+        runbook_url: https://github.com/your-github-org/REMS-AWS-Architecture/blob/main/runbooks/slo-burn-rate.md

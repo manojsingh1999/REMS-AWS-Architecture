@@ -1,0 +1,157 @@
+# OpenTelemetry Collector (contrib) - gateway for the REMS platform's own telemetry.
+# Services export OTLP (OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc:4318).
+# Pipelines:
+#   traces  -> Tempo   (tenant rems-platform)
+#   metrics -> Prometheus remote-write (span/RED metrics)
+#   logs    -> Loki    (tenant rems-platform, native OTLP endpoint)
+#   audit   -> CloudWatch Logs /rems/<env>/audit (authz + MCP decisions)  [Pod Identity: logs:PutLogEvents]
+mode: deployment
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+serviceAccount:
+  create: true
+  name: otel-collector
+
+replicaCount: 3
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 30
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 1Gi
+
+nodeSelector:
+  rems.io/node-pool: observability
+tolerations:
+  - key: rems.io/dedicated
+    value: observability
+    effect: NoSchedule
+
+presets:
+  kubernetesAttributes:
+    enabled: true
+
+ports:
+  otlp:
+    enabled: true
+  otlp-http:
+    enabled: true
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+config:
+  extensions:
+    health_check:
+      endpoint: ${env:MY_POD_IP}:13133
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: ${env:MY_POD_IP}:4317
+        http:
+          endpoint: ${env:MY_POD_IP}:4318
+  processors:
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 80
+      spike_limit_percentage: 20
+    batch:
+      send_batch_size: 8192
+      timeout: 2s
+    resource/platform:
+      attributes:
+        - key: deployment.environment
+          value: PLACEHOLDER-environment
+          action: upsert
+    # Tail-free cost control: drop health-check and metrics-scrape spans before export.
+    filter/noise:
+      error_mode: ignore
+      traces:
+        span:
+          - 'attributes["url.path"] == "/healthz"'
+          - 'attributes["url.path"] == "/readyz"'
+          - 'attributes["url.path"] == "/metrics"'
+    # Audit events: logs from authz/MCP carrying event.domain=audit (PLACEHOLDER contract with the services).
+    filter/audit-only:
+      error_mode: ignore
+      logs:
+        log_record:
+          - 'attributes["event.domain"] != "audit"'
+    transform/redact:
+      error_mode: ignore
+      log_statements:
+        - context: log
+          statements:
+            - replace_pattern(body, "(?i)bearer [A-Za-z0-9._-]+", "Bearer ***")
+            - replace_pattern(body, "(?i)password=[^&\\s]+", "password=***")
+  exporters:
+    otlphttp/tempo:
+      endpoint: http://tempo-distributor.observability.svc:4318
+      headers:
+        X-Scope-OrgID: rems-platform
+    otlphttp/loki:
+      endpoint: http://loki-gateway.observability.svc/otlp
+      headers:
+        X-Scope-OrgID: rems-platform
+    prometheusremotewrite:
+      endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
+      resource_to_telemetry_conversion:
+        enabled: true
+    awscloudwatchlogs/audit:
+      region: PLACEHOLDER-region
+      log_group_name: /rems/PLACEHOLDER-environment/audit
+      log_stream_name: otel-${env:MY_POD_NAME}
+      raw_log: false
+  connectors:
+    spanmetrics:
+      histogram:
+        explicit:
+          buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+      dimensions:
+        - name: http.response.status_code
+        - name: http.route
+  service:
+    extensions: [health_check]
+    telemetry:
+      metrics:
+        address: ${env:MY_POD_IP}:8888
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, filter/noise, resource/platform, batch]
+        exporters: [otlphttp/tempo, spanmetrics]
+      metrics:
+        receivers: [otlp, spanmetrics]
+        processors: [memory_limiter, resource/platform, batch]
+        exporters: [prometheusremotewrite]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, transform/redact, resource/platform, batch]
+        exporters: [otlphttp/loki]
+      logs/audit:
+        receivers: [otlp]
+        processors: [memory_limiter, filter/audit-only, transform/redact, batch]
+        exporters: [awscloudwatchlogs/audit]
+
+serviceMonitor:
+  enabled: true

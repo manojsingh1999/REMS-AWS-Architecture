@@ -1,0 +1,100 @@
+# Namespaces. Application namespaces enforce the "restricted" Pod Security Standard.
+# The tenant label is used by NetworkPolicies and Kyverno policies.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rems
+  labels:
+    rems.io/tier: application
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rems-ai
+  labels:
+    rems.io/tier: application
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    rems.io/tier: observability
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    rems.io/tier: observability
+    pod-security.kubernetes.io/enforce: privileged # node-exporter needs hostPID/hostNetwork
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-rollouts
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: amazon-cloudwatch
+  labels:
+    rems.io/tier: platform
+    pod-security.kubernetes.io/enforce: privileged # CloudWatch agent / Container Insights

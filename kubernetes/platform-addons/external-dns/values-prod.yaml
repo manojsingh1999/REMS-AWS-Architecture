@@ -1,0 +1,4 @@
+# prod
+txtOwnerId: rems-prod
+domainFilters:
+  - rems.example.com

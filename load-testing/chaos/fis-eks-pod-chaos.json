@@ -1,0 +1,26 @@
+{
+  "description": "Delete 50% of rems-api pods to validate PDBs, readiness gates and ALB draining (run per release in staging).",
+  "roleArn": "arn:aws:iam::ACCOUNT_ID:role/rems-ENV-fis",
+  "stopConditions": [ { "source": "none" } ],
+  "targets": {
+    "RemsApiPods": {
+      "resourceType": "aws:eks:pod",
+      "parameters": {
+        "clusterIdentifier": "arn:aws:eks:REGION:ACCOUNT_ID:cluster/rems-ENV",
+        "namespace": "rems",
+        "selectorType": "labelSelector",
+        "selectorValue": "app.kubernetes.io/name=rems-api",
+        "targetContainerName": "rems-api"
+      },
+      "selectionMode": "PERCENT(50)"
+    }
+  },
+  "actions": {
+    "DeletePods": {
+      "actionId": "aws:eks:pod-delete",
+      "parameters": { "kubernetesServiceAccount": "fis-experiment", "gracePeriodSeconds": "30" },
+      "targets": { "Pods": "RemsApiPods" }
+    }
+  },
+  "tags": { "Project": "REMS", "Purpose": "pod-chaos" }
+}

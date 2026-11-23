@@ -1,0 +1,93 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Environment: prod-dr  (cluster: rems-prod-dr, region: ap-southeast-1)
+resources:
+  - ../../base
+components:
+  - ../../../ai-infrastructure/llm-gateway/k8s
+patches:
+  - target:
+      kind: EC2NodeClass
+      name: default
+    patch: |-
+      - op: replace
+        path: /spec/role
+        value: rems-prod-dr-karpenter-node
+      - op: replace
+        path: /spec/subnetSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-prod-dr
+      - op: replace
+        path: /spec/securityGroupSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-prod-dr
+      - op: add
+        path: /spec/tags/Environment
+        value: prod
+  - target:
+      kind: NodePool
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/requirements/0/values
+        value: [ap-southeast-1a, ap-southeast-1b, ap-southeast-1c]
+  - target:
+      kind: ClusterSecretStore
+      name: aws-secrets-manager
+    patch: |-
+      - op: replace
+        path: /spec/provider/aws/region
+        value: ap-southeast-1
+  - target:
+      kind: Deployment
+      name: overprovisioning
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0
+  # DR warm standby: same AMI pin as prod; capacity scales up on failover (Karpenter limits unchanged).
+  - target:
+      kind: EC2NodeClass
+      name: default
+    patch: |-
+      - op: replace
+        path: /spec/amiSelectorTerms/0/alias
+        value: al2023@v20241115
+  # LLM gateway secrets: Secrets Manager keys of this environment
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-provider-keys
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/prod/llm/openai
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/prod/llm/anthropic
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-master-key
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/prod/llm/master-key
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-db
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/prod/aurora/rems-prod-core/llm-gateway
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/prod/aurora/rems-prod-core/llm-gateway
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-redis
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/prod/redis/rems-prod-dr-cache
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/prod/redis/rems-prod-dr-cache
+      - op: replace
+        path: /spec/data/2/remoteRef/key
+        value: rems/prod/redis/rems-prod-dr-cache

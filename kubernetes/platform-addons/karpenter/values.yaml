@@ -1,0 +1,28 @@
+# Karpenter controller runs on the system node group (tolerates CriticalAddonsOnly), never on nodes it manages.
+replicas: 2
+serviceAccount:
+  name: karpenter # bound to the controller role via EKS Pod Identity (terraform/modules/karpenter)
+settings:
+  clusterName: PLACEHOLDER-cluster-name
+  interruptionQueue: PLACEHOLDER-interruption-queue
+  featureGates:
+    spotToSpotConsolidation: true
+controller:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+podDisruptionBudget:
+  name: karpenter
+  maxUnavailable: 1

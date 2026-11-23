@@ -1,0 +1,9 @@
+replicas: 2
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+nodeSelector:
+  rems.io/node-pool: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists

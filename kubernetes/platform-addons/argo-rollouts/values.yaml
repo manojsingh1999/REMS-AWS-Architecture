@@ -1,0 +1,17 @@
+controller:
+  replicas: 2
+  nodeSelector:
+    rems.io/node-pool: system
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+dashboard:
+  enabled: false
+notifications:
+  notifiers:
+    service.slack: |
+      token: $slack-token

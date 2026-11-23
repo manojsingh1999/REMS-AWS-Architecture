@@ -1,0 +1,95 @@
+# Grafana Tempo distributed (chart tempo-distributed 1.x), multi-tenant, S3 backend.
+# metrics-generator produces service-graph (dependency map) and span RED metrics for every tenant.
+multitenancyEnabled: true
+
+serviceAccount:
+  create: true
+  name: tempo # Pod Identity: s3 telemetry bucket, prefix tempo/
+
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: PLACEHOLDER-telemetry-bucket
+      prefix: tempo
+      endpoint: s3.PLACEHOLDER-region.amazonaws.com
+      region: PLACEHOLDER-region
+      insecure: false
+
+global_overrides:
+  defaults:
+    ingestion:
+      rate_limit_bytes: 15000000
+      burst_size_bytes: 20000000
+      max_traces_per_user: 100000
+    metrics_generator:
+      processors: [service-graphs, span-metrics]
+    compaction:
+      block_retention: 720h # 30 days
+
+compactor:
+  replicas: 1
+  config:
+    compaction:
+      block_retention: 720h
+
+distributor:
+  replicas: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 9
+    targetCPUUtilizationPercentage: 70
+
+ingester:
+  replicas: 3
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 20Gi
+  config:
+    replication_factor: 3
+  zoneAwareReplication:
+    enabled: true
+    topologyKey: topology.kubernetes.io/zone
+
+querier:
+  replicas: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+
+queryFrontend:
+  replicas: 2
+
+metricsGenerator:
+  enabled: true
+  replicas: 2
+  config:
+    storage:
+      remote_write:
+        - url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090/api/v1/write
+          send_exemplars: true
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+
+global:
+  podLabels:
+    rems.io/component: tempo
+
+nodeSelector:
+  rems.io/node-pool: observability
+tolerations:
+  - key: rems.io/dedicated
+    value: observability
+    effect: NoSchedule
+
+metaMonitoring:
+  serviceMonitor:
+    enabled: true

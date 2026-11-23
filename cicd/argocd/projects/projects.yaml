@@ -1,0 +1,75 @@
+# AppProjects restrict what each group of Applications may deploy and where.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Cluster add-ons (controllers, observability backends, policies)
+  sourceRepos:
+    - https://github.com/your-github-org/REMS-AWS-Architecture.git
+    - https://aws.github.io/eks-charts
+    - public.ecr.aws/karpenter
+    - https://charts.external-secrets.io
+    - https://kedacore.github.io/charts
+    - https://argoproj.github.io/argo-helm
+    - https://kyverno.github.io/kyverno/
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://prometheus-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
+    - https://victoriametrics.github.io/helm-charts/
+    - ghcr.io/berriai
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: rems
+  namespace: argocd
+spec:
+  description: REMS application services
+  sourceRepos:
+    - https://github.com/your-github-org/REMS-AWS-Architecture.git
+    - https://github.com/your-github-org/rems-microconfig.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: rems
+    - server: https://kubernetes.default.svc
+      namespace: rems-ai
+  # Application charts may not create cluster-scoped objects.
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+  roles:
+    - name: oncall
+      description: Sync / rollback REMS apps
+      policies:
+        - p, proj:rems:oncall, applications, get, rems/*, allow
+        - p, proj:rems:oncall, applications, sync, rems/*, allow
+        - p, proj:rems:oncall, applications, action/argoproj.io/Rollout/*, rems/*, allow
+      groups:
+        - rems-oncall
+  # Production change window (10:00-18:00 IST, Mon-Thu). Outside it only manual syncs by on-call are allowed.
+  syncWindows:
+    - kind: allow
+      schedule: "30 4 * * 1-4"
+      duration: 8h
+      applications: ["rems-prod-*"]
+      manualSync: true
+    - kind: deny
+      schedule: "30 12 * * *"
+      duration: 16h
+      applications: ["rems-prod-*"]
+      manualSync: true

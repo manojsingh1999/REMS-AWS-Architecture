@@ -1,0 +1,85 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Environment: staging  (cluster: rems-staging, region: ap-south-1)
+resources:
+  - ../../base
+components:
+  - ../../../ai-infrastructure/llm-gateway/k8s
+patches:
+  - target:
+      kind: EC2NodeClass
+      name: default
+    patch: |-
+      - op: replace
+        path: /spec/role
+        value: rems-staging-karpenter-node
+      - op: replace
+        path: /spec/subnetSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-staging
+      - op: replace
+        path: /spec/securityGroupSelectorTerms/0/tags/karpenter.sh~1discovery
+        value: rems-staging
+      - op: add
+        path: /spec/tags/Environment
+        value: staging
+  - target:
+      kind: NodePool
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/requirements/0/values
+        value: [ap-south-1a, ap-south-1b, ap-south-1c]
+  - target:
+      kind: ClusterSecretStore
+      name: aws-secrets-manager
+    patch: |-
+      - op: replace
+        path: /spec/provider/aws/region
+        value: ap-south-1
+  - target:
+      kind: Deployment
+      name: overprovisioning
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # LLM gateway secrets: Secrets Manager keys of this environment
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-provider-keys
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/staging/llm/openai
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/staging/llm/anthropic
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-master-key
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/staging/llm/master-key
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-db
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/staging/aurora/rems-staging-core/llm-gateway
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/staging/aurora/rems-staging-core/llm-gateway
+  - target:
+      kind: ExternalSecret
+      name: llm-gateway-redis
+    patch: |-
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: rems/staging/redis/rems-staging-cache
+      - op: replace
+        path: /spec/data/1/remoteRef/key
+        value: rems/staging/redis/rems-staging-cache
+      - op: replace
+        path: /spec/data/2/remoteRef/key
+        value: rems/staging/redis/rems-staging-cache

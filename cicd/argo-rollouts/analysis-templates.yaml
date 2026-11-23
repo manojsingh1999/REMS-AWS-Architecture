@@ -1,0 +1,68 @@
+# Automated canary analysis used by every REMS Rollout (args injected by rems-common).
+# Metric names follow OpenTelemetry HTTP semantic conventions exported to Prometheus (ASSUMPTION A14).
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterAnalysisTemplate
+metadata:
+  name: rems-http-error-rate
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: error-rate
+      interval: 1m
+      count: 5
+      failureLimit: 1
+      # < 1 % 5xx of all requests served by the service during the canary step
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < 0.01
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: |
+            sum(rate(http_server_request_duration_seconds_count{service_name="{{args.service-name}}",http_response_status_code=~"5.."}[2m]))
+            /
+            sum(rate(http_server_request_duration_seconds_count{service_name="{{args.service-name}}"}[2m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterAnalysisTemplate
+metadata:
+  name: rems-http-latency-p95
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: latency-p95
+      interval: 1m
+      count: 5
+      failureLimit: 1
+      # p95 must stay under 500 ms (SLO threshold for interactive APIs)
+      successCondition: len(result) == 0 || isNaN(result[0]) || result[0] < 0.5
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: |
+            histogram_quantile(0.95, sum by (le) (
+              rate(http_server_request_duration_seconds_bucket{service_name="{{args.service-name}}"}[2m])
+            ))
+---
+# Pod health guard: abort if canary pods restart (crash loops that never produce HTTP errors).
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterAnalysisTemplate
+metadata:
+  name: rems-pod-restarts
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: restarts
+      interval: 1m
+      count: 5
+      failureLimit: 0
+      successCondition: len(result) == 0 || result[0] < 1
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: |
+            sum(increase(kube_pod_container_status_restarts_total{namespace="{{args.namespace}}",container="{{args.service-name}}"}[2m]))

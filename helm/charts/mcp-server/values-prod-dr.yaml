@@ -1,0 +1,10 @@
+# mcp-server - prod-dr (ap-southeast-1) overrides, layered on values-prod.yaml.
+# Warm standby: 1 replica per service. During failover (runbooks/dr-regional-failover.md) the
+# 'dr-scale-up' PR deletes the autoscaling override so prod minimums apply.
+# Aurora secrets are Secrets Manager replicas (same names as primary); Redis is the DR cluster.
+autoscaling:
+  minReplicas: 1
+pdb:
+  enabled: true
+  minAvailable: null
+  maxUnavailable: 1
