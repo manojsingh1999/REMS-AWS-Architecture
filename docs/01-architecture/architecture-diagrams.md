@@ -280,3 +280,9 @@ flowchart TB
   OPS[Operator runs runbooks/dr-regional-failover.md] -->|switchover / failover-global-cluster| AUR2
   OPS -->|dr_promoted = true, scale nodes| EKS2
 ```
+
+## Hand-drawn views (Excalidraw)
+
+![AWS architecture](../diagrams/aws-architecture.png)
+![CI/CD flow](../diagrams/cicd-flow.png)
+![Seven DevSecOps pillars](../diagrams/devsecops-pillars.png)
