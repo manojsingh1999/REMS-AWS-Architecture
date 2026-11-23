@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: load-test-staging
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: grafana/setup-k6-action@v1
       - name: Run scenario
         env:
@@ -37,7 +37,7 @@ jobs:
           k6 run --summary-export "summary-${SCENARIO}.json" \
             -e BASE_URL="${BASE_URL}" -e ACCESS_TOKEN="${K6_ACCESS_TOKEN}" \
             "load-testing/k6/scenarios/${SCENARIO}.js"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: k6-${{ inputs.scenario || 'normal-load' }}
