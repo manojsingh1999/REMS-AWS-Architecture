@@ -1,0 +1,241 @@
+diff --git a/README.md b/README.md
+index 8416622..096779f 100644
+--- a/README.md
++++ b/README.md
+@@ -160,7 +160,9 @@ Guide: [docs/05-helm/application-deployment.md](docs/05-helm/application-deploym
+ 
+ PR merge → date tag `YYYY.MM.DD-<run>` → hadolint → buildx (amd64 + arm64) → Trivy gate → push to ECR → SBOM + cosign → PR to `rems-microconfig` (`apps/<svc>/values-dev.yaml`) → auto-merge → ArgoCD sync → Argo Rollouts canary with analysis. Promotion to staging/prod uses `promote.yml` (same digest, CODEOWNER approvals). Rollback uses `rollback.yml`.
+ 
+-Guide: [docs/06-cicd/deployment-workflow.md](docs/06-cicd/deployment-workflow.md).
++Branching: trunk-based. Short-lived `feat/*` / `fix/*` / `hotfix/*` branches merge to a protected `main` by squash PR. Environments are folders in `rems-microconfig`, not branches.
++
++Guides: [docs/06-cicd/deployment-workflow.md](docs/06-cicd/deployment-workflow.md), [docs/06-cicd/git-branching-strategy.md](docs/06-cicd/git-branching-strategy.md).
+ 
+ ## 13. Monitoring access
+ 
+@@ -209,7 +211,7 @@ Details: [docs/12-testing](docs/12-testing/terraform-validation.md).
+ | 03 Terraform | [Installation](docs/03-terraform/installation.md) · [Structure](docs/03-terraform/project-structure.md) · [Backend](docs/03-terraform/backend-configuration.md) · [Modules](docs/03-terraform/modules-explanation.md) · [Environments](docs/03-terraform/environment-configuration.md) · [Deployment](docs/03-terraform/terraform-deployment.md) · [Troubleshooting](docs/03-terraform/troubleshooting.md) |
+ | 04 Kubernetes | [Cluster](docs/04-kubernetes/cluster-configuration.md) · [Namespaces](docs/04-kubernetes/namespaces.md) · [Deployments](docs/04-kubernetes/deployments.md) · [Services](docs/04-kubernetes/services.md) · [Ingress](docs/04-kubernetes/ingress.md) · [Autoscaling](docs/04-kubernetes/autoscaling.md) · [Network policies](docs/04-kubernetes/network-policies.md) · [Troubleshooting](docs/04-kubernetes/troubleshooting.md) |
+ | 05 Helm | [Installation](docs/05-helm/helm-installation.md) · [Chart structure](docs/05-helm/chart-structure.md) · [Values](docs/05-helm/values-configuration.md) · [Application deployment](docs/05-helm/application-deployment.md) |
+-| 06 CI/CD | [GitHub Actions](docs/06-cicd/github-actions.md) · [Docker build](docs/06-cicd/docker-build.md) · [ECR](docs/06-cicd/ecr-integration.md) · [Security scanning](docs/06-cicd/security-scanning.md) · [ArgoCD](docs/06-cicd/argocd-setup.md) · [Workflow](docs/06-cicd/deployment-workflow.md) · [Rollback](docs/06-cicd/rollback-procedure.md) |
++| 06 CI/CD | [Branching strategy](docs/06-cicd/git-branching-strategy.md) · [GitHub Actions](docs/06-cicd/github-actions.md) · [Docker build](docs/06-cicd/docker-build.md) · [ECR](docs/06-cicd/ecr-integration.md) · [Security scanning](docs/06-cicd/security-scanning.md) · [ArgoCD](docs/06-cicd/argocd-setup.md) · [Workflow](docs/06-cicd/deployment-workflow.md) · [Rollback](docs/06-cicd/rollback-procedure.md) |
+ | 07 Security | [IAM](docs/07-security/iam-security.md) · [Secrets](docs/07-security/secrets-management.md) · [Encryption](docs/07-security/encryption.md) · [Containers](docs/07-security/container-security.md) · [Kubernetes](docs/07-security/kubernetes-security.md) · [Tenant isolation](docs/07-security/tenant-isolation.md) · [MCP](docs/07-security/mcp-security.md) |
+ | 08 Database | [PostgreSQL](docs/08-database/postgresql-setup.md) · [Redis](docs/08-database/redis-setup.md) · [Backup & restore](docs/08-database/backup-and-restore.md) · [Pooling](docs/08-database/connection-pooling.md) · [DR](docs/08-database/disaster-recovery.md) |
+ | 09 Monitoring | [Prometheus](docs/09-monitoring/prometheus.md) · [Grafana](docs/09-monitoring/grafana.md) · [Loki](docs/09-monitoring/loki.md) · [Tempo](docs/09-monitoring/tempo.md) · [OpenTelemetry](docs/09-monitoring/opentelemetry.md) · [Alerting](docs/09-monitoring/alerting.md) · [Dashboards](docs/09-monitoring/dashboards.md) |
+diff --git a/docs/06-cicd/deployment-workflow.md b/docs/06-cicd/deployment-workflow.md
+index 0fcdcc0..1a6f269 100644
+--- a/docs/06-cicd/deployment-workflow.md
++++ b/docs/06-cicd/deployment-workflow.md
+@@ -25,6 +25,8 @@ sequenceDiagram
+   RO->>RO: canary 10/25/50/100 with analysis
+ ```
+ 
++Branching model behind this flow: [Git branching strategy](git-branching-strategy.md).
++
+ ## Promotion rules
+ 
+ | Env | Who changes the tag | Approval | Delivery |
+diff --git a/docs/06-cicd/git-branching-strategy.md b/docs/06-cicd/git-branching-strategy.md
+new file mode 100644
+index 0000000..53e75ca
+--- /dev/null
++++ b/docs/06-cicd/git-branching-strategy.md
+@@ -0,0 +1,156 @@
++# Git Branching Strategy
++
++**Status:** ✅ The rules behind this strategy are already implemented: `main`-only triggers in the workflows, branch protection on `rems-microconfig` (`terraform/cicd/github/main.tf`, resource `github_branch_protection.main`), immutable date tags and releases in `app-build.yml`, and environment approvals. 📋 Branch protection for the **platform** and **service** repositories is a one-time GitHub setting (commands below). It isn't managed by Terraform.
++
++## Objective
++
++Short-lived branches, one long-lived branch (`main`) per repository, and **environments represented by folders and immutable image tags, never by branches**. Every change to what runs in an environment is a reviewed, audited pull request.
++
++## Model: trunk-based development + GitOps promotion
++
++| Repository | Long-lived branch | Work branches | What a merge to `main` does |
++|---|---|---|---|
++| Platform repo (this one): Terraform, charts, policies, docs | `main` | `feat/*`, `fix/*`, `chore/*`, `docs/*`, `infra/*` | `terraform.yml` applies dev automatically, then staging and prod after environment approvals. ArgoCD picks up chart and add-on changes |
++| Service repos (rems-api, chat-engine, …) | `main` | `feat/*`, `fix/*`, `hotfix/*` | `app-build.yml` builds, scans, signs, creates the date tag + GitHub release, and opens a PR in rems-microconfig for dev |
++| `rems-microconfig` (GitOps values) | `main` | Bot branches from CI, `promote/*`, `rollback/*` created by the workflows | ArgoCD syncs the changed environment folder |
++
++### Why not GitFlow or a branch per environment
++
++* A `dev` / `staging` / `prod` branch per environment drifts: hot-fixes land on one branch and never reach the others, and merges between environment branches carry unrelated changes.
++* With **folders per environment** (`apps/<svc>/values-<env>.yaml`) and **promotion that copies the exact tag + digest**, prod runs the same artifact that was tested in staging, and the diff of a promotion PR shows exactly one change.
++* `release/*` branches aren't needed, because every merge to `main` produces an immutable, deployable artifact (`YYYY.MM.DD-<run>`).
++
++## Flow
++
++```mermaid
++gitGraph
++  commit id: "main"
++  branch feat/rems-api-pagination
++  checkout feat/rems-api-pagination
++  commit id: "add pagination"
++  commit id: "tests"
++  checkout main
++  merge feat/rems-api-pagination id: "squash merge -> tag 2026.11.23-41"
++  branch fix/authz-cache-ttl
++  checkout fix/authz-cache-ttl
++  commit id: "fix ttl"
++  checkout main
++  merge fix/authz-cache-ttl id: "tag 2026.11.23-42"
++  branch hotfix/chat-timeout
++  checkout hotfix/chat-timeout
++  commit id: "raise idle timeout"
++  checkout main
++  merge hotfix/chat-timeout id: "tag 2026.11.23-43 -> fast-track promote"
++```
++
++The tags in the graph only illustrate the format. Real tags are created by CI from the run number.
++
++```mermaid
++flowchart LR
++  B[feat/* or fix/* branch] -->|PR: CI checks + review| M[main]
++  M -->|app-build.yml| T[Immutable tag YYYY.MM.DD-run + GitHub release]
++  T -->|bot PR, auto-merge| D[rems-microconfig apps/SVC/values-dev.yaml]
++  D -->|promote.yml dev-to-staging, CODEOWNERS| S[values-staging.yaml]
++  S -->|promote.yml staging-to-prod, 2 approvals, change window| P[values-prod.yaml]
++  P -.->|rollback.yml| R[previous tag]
++```
++
++## Branch naming
++
++| Prefix | Use | Example |
++|---|---|---|
++| `feat/` | New capability | `feat/karpenter-gpu-nodepool` |
++| `fix/` | Bug fix | `fix/loki-retention-override` |
++| `hotfix/` | Urgent production fix (service repos) | `hotfix/chat-engine-stream-timeout` |
++| `infra/` | Terraform-only change | `infra/prod-aurora-reader-scaling` |
++| `chore/` | Dependencies, tooling | `chore/bump-argo-cd-7.7.11` |
++| `docs/` | Documentation only | `docs/dr-runbook-update` |
++| `promote/`, `rollback/` | Created **only** by microconfig workflows | `promote/rems-api-staging-to-prod-…` |
++
++Rules: lowercase, hyphen-separated, an issue key if you have one (`fix/REMS-123-...`). Delete the branch after merge (`delete_branch_on_merge = true` in `terraform/cicd/github/main.tf`).
++
++## Commits and pull requests
++
++* **Conventional Commits** in PR titles: `feat:`, `fix:`, `infra:`, `docs:`, `chore:`, `refactor:`, `test:`. With squash merge, the PR title becomes the commit message on `main`.
++* **Squash merge** for feature branches. Linear history is required on `main`.
++* PR template checklist: what changed and why, environments affected, `terraform plan` / render reviewed, rollback plan, docs updated.
++* Keep branches short-lived (≤ 2 days). Use feature flags in the application for unfinished features rather than long-running branches.
++
++## Required checks per repository
++
++| Repository | Required status checks on `main` | Reviews |
++|---|---|---|
++| Platform | `terraform.yml` job `Static checks`, `k8s-validate.yml` jobs `helm`, `kustomize`, `policy`, `Kyverno admission policies vs. prod manifests` | CODEOWNERS (platform team; security team for `security/**`, IAM and SCP files), 1 approval, stale approvals dismissed |
++| Service repos | `test`, `quality` (Sonar), `scan-source` (Trivy fs) from `app-build.yml` | 1 approval, CODEOWNERS |
++| rems-microconfig | `validate` (YAML, tag/digest format, no `:latest`, prod tag = staging tag, 2 approvals for prod paths) | CODEOWNERS: platform for staging, platform + SRE for prod. The bot's dev PRs need none |
++
++Common settings for all three: no force pushes, no deletion of `main`, linear history, conversation resolution required, admins included. Signed commits are optional (`require_signed_commits`). Turn them on once all bots commit through the GitHub API.
++
++## Steps: apply branch protection
++
++**rems-microconfig**: managed by Terraform:
++
++```bash
++cd terraform/cicd/github
++terraform plan -out=tfplan && terraform apply tfplan     # resource github_branch_protection.main
++```
++
++**Platform and service repositories** (📋 one-time, run as a repo admin):
++
++```bash
++OWNER=<github-user-or-org>; REPO=<repo-name>
++cat > /tmp/protection.json <<'EOF'
++{
++  "required_status_checks": { "strict": true, "contexts": ["Static checks", "helm", "kustomize", "policy"] },
++  "enforce_admins": true,
++  "required_pull_request_reviews": {
++    "dismiss_stale_reviews": true,
++    "require_code_owner_reviews": true,
++    "required_approving_review_count": 1
++  },
++  "restrictions": null,
++  "required_linear_history": true,
++  "allow_force_pushes": false,
++  "allow_deletions": false,
++  "required_conversation_resolution": true
++}
++EOF
++gh api -X PUT "repos/$OWNER/$REPO/branches/main/protection" --input /tmp/protection.json
++gh api -X PATCH "repos/$OWNER/$REPO" -F allow_squash_merge=true -F allow_merge_commit=false \
++  -F allow_rebase_merge=false -F delete_branch_on_merge=true
++```
++
++`contexts` uses the check-run names, which are the job `name:` values in the workflows (`Static checks` in `terraform.yml`; `helm`, `kustomize`, `policy` in `k8s-validate.yml`). Both workflows have `paths:` filters, so a PR that only touches `docs/**` doesn't run them, and a **required** check that never runs blocks the merge. Either remove the `paths:` filter from the `pull_request` trigger, or add a small always-running workflow with jobs of the same name. Open one PR and compare the names in its checks list before applying. For service repos, use their own check names (for example `test`).
++
++`.github/CODEOWNERS` still uses the placeholder org `your-github-org`. Replace it with your user or team handles, or CODEOWNERS review can't be satisfied.
++
++## Hotfix flow
++
++1. Branch `hotfix/<summary>` from `main`. Open a PR with the `hotfix` label. Reviewers fast-track it, but the same checks apply.
++2. Merge. CI produces a new date tag.
++3. Promote dev → staging → prod immediately with `promote.yml`. The prod change window can be overridden by on-call (ArgoCD `manualSync`), and the override is recorded in the incident.
++4. If the fix can't wait for a build, roll back first ([rollback procedure](rollback-procedure.md)), then hotfix.
++
++There are no hotfix branches off old releases: production always runs a tag built from `main`, so the fix goes to `main` and forward.
++
++## Versioning and tags
++
++| Artifact | Version | Created by |
++|---|---|---|
++| Container images | `YYYY.MM.DD-<run number>` (immutable in ECR) + digest | `app-build.yml` job `tag` |
++| Service releases | Git tag + GitHub release with the same name | `app-build.yml` (`gh release create`) |
++| Helm charts | `version` in `Chart.yaml` (SemVer), bumped when templates change | Platform PR |
++| Reusable workflow | Service repos call `app-build.yml@main`. Pin to a tag (`@v1`) once stable | Platform maintainers |
++| Terraform modules | Referenced by relative path (same repo), so no separate versioning | – |
++
++## Verification
++
++```bash
++gh api repos/<owner>/<repo>/branches/main/protection --jq '{checks: .required_status_checks.contexts, linear: .required_linear_history.enabled, admins: .enforce_admins.enabled}'
++gh api repos/<owner>/<repo> --jq '{squash: .allow_squash_merge, merge: .allow_merge_commit, delete_branch: .delete_branch_on_merge}'
++git push origin main      # should be rejected: "protected branch hook declined"
++```
++
++## Rollback
++
++Code: `git revert` through a PR (never force-push `main`). Running version: [rollback procedure](rollback-procedure.md). Branch protection itself: re-run the `gh api` command with the previous JSON, or `terraform apply` for microconfig.
+diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+index 3ee10c8..5af3fed 100644
+--- a/docs/CHANGELOG.md
++++ b/docs/CHANGELOG.md
+@@ -2,6 +2,13 @@
+ 
+ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are UTC.
+ 
++## [1.1.0] · 2026-11-23
++
++### Added
++
++- `docs/06-cicd/git-branching-strategy.md`: trunk-based branching, naming, PR and merge rules, required checks, branch protection commands, hotfix flow, versioning.
++- Links to it from `README.md`, `docs/README.md` and the deployment workflow page.
++
+ ## [1.0.0] · 2026-11-23
+ 
+ ### Added: infrastructure implementation
+diff --git a/docs/IMPLEMENTATION-STATUS.md b/docs/IMPLEMENTATION-STATUS.md
+index aa54346..e2f79b1 100644
+--- a/docs/IMPLEMENTATION-STATUS.md
++++ b/docs/IMPLEMENTATION-STATUS.md
+@@ -53,6 +53,7 @@ Snapshot date: **2026-11-23**.
+ | 13 | `dr-scale-up` PR prepared in rems-microconfig | microconfig repo | Runbook step 4 |
+ | 14 | LiteLLM image tag pinned, Bedrock model IDs re-checked for the regions | `ai-infrastructure/llm-gateway/values.yaml` | Gateway can't start with a placeholder tag |
+ | 15 | Silo tenancy option, service mesh / mTLS, CIS benchmark run, Infracost, RAG recall dataset | design only | Optional hardening |
++| 16 | Branch protection on the platform and service repos, and CODEOWNERS handles (`your-github-org` placeholders) | GitHub settings, `.github/CODEOWNERS` | `main` is unprotected until applied ([branching strategy](06-cicd/git-branching-strategy.md)) |
+ 
+ ## ⛔ Blocked
+ 
+diff --git a/docs/README.md b/docs/README.md
+index 7801898..fb68598 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -71,6 +71,7 @@ Objective → prerequisites → AWS services → steps with exact commands → T
+ - [Application deployment](05-helm/application-deployment.md)
+ 
+ ### 06 · CI/CD
++- [Git branching strategy](06-cicd/git-branching-strategy.md)
+ - [GitHub Actions](06-cicd/github-actions.md)
+ - [Docker build](06-cicd/docker-build.md)
+ - [ECR integration](06-cicd/ecr-integration.md)
